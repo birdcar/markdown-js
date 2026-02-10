@@ -23,6 +23,22 @@
     "./directives": {
       "types": "./dist/blocks/index.d.ts",
       "import": "./dist/blocks/index.js"
+    },
+    "./frontmatter": {
+      "types": "./dist/blocks/frontmatter/index.d.ts",
+      "import": "./dist/blocks/frontmatter/index.js"
+    },
+    "./hashtags": {
+      "types": "./dist/inlines/hashtags/index.d.ts",
+      "import": "./dist/inlines/hashtags/index.js"
+    },
+    "./metadata": {
+      "types": "./dist/metadata/index.d.ts",
+      "import": "./dist/metadata/index.js"
+    },
+    "./merge": {
+      "types": "./dist/merge/index.d.ts",
+      "import": "./dist/merge/index.js"
     }
   },
   "scripts": {
@@ -32,12 +48,15 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "mdast-util-from-markdown": "^2.0.0",
+    "mdast-util-frontmatter": "^2.0.1",
+    "mdast-util-to-markdown": "^2.0.0",
+    "micromark-extension-frontmatter": "^2.0.0",
     "micromark-util-character": "^2.0.0",
     "micromark-util-symbol": "^2.0.0",
     "micromark-util-types": "^2.0.0",
-    "mdast-util-from-markdown": "^2.0.0",
-    "mdast-util-to-markdown": "^2.0.0",
-    "unist-util-visit": "^5.0.0"
+    "unist-util-visit": "^5.0.0",
+    "yaml": "^2.4.0"
   },
   "peerDependencies": {
     "remark-parse": "^11.0.0",
@@ -45,8 +64,12 @@
     "rehype-stringify": "^10.0.0"
   },
   "peerDependenciesMeta": {
-    "remark-rehype": { "optional": true },
-    "rehype-stringify": { "optional": true }
+    "remark-rehype": {
+      "optional": true
+    },
+    "rehype-stringify": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/mdast": "^4.0.0",

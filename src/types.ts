@@ -34,6 +34,17 @@ export type MentionNode = Literal & {
   identifier: string
 }
 
+export type HashtagNode = Literal & {
+  type: 'hashtag'
+  identifier: string
+}
+
+/** Yaml front-matter node with parsed data. Extends mdast-util-frontmatter's Yaml. */
+export type YamlNode = Literal & {
+  type: 'yaml'
+  data: Record<string, unknown>
+}
+
 export type DirectiveBlockNode = Parent & {
   type: 'directiveBlock'
   name: string
@@ -46,6 +57,7 @@ declare module 'mdast' {
     taskMarker: TaskMarkerNode
     taskModifier: TaskModifierNode
     mention: MentionNode
+    hashtag: HashtagNode
   }
 
   interface BlockContentMap {
@@ -92,7 +104,11 @@ declare module 'micromark-util-types' {
     embedBlockUrl: 'embedBlockUrl'
     embedBlockBody: 'embedBlockBody'
     embedBlockCloseFence: 'embedBlockCloseFence'
+    hashtag: 'hashtag'
+    hashtagMarker: 'hashtagMarker'
+    hashtagIdentifier: 'hashtagIdentifier'
     _peek: '_peek'
     _mentionPeek: '_mentionPeek'
+    _hashtagPeek: '_hashtagPeek'
   }
 }
