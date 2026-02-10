@@ -1,6 +1,6 @@
 # @birdcar/markdown
 
-[unified][] / [remark][] plugin suite for **Birdcar Flavored Markdown** (BFM) — a superset of CommonMark and GFM that adds directive blocks, extended task lists, task modifiers, and mentions.
+[unified][] / [remark][] plugin suite for **Birdcar Flavored Markdown** (BFM) — a superset of CommonMark and GFM that adds YAML front-matter, directive blocks, extended task lists, task modifiers, mentions, hashtags, metadata extraction, and document merging.
 
 See the [BFM spec](https://github.com/birdcar/markdown-spec) for the full syntax definition.
 
@@ -37,6 +37,12 @@ const file = await unified()
   .use(remarkRehype)
   .use(rehypeStringify)
   .process(`
+---
+title: Sprint Planning
+tags:
+  - engineering
+---
+
 - [>] Call the dentist //due:2025-03-01
 - [!] File taxes //due:2025-04-15 //hard
 - [x] Buy groceries
@@ -45,7 +51,7 @@ const file = await unified()
 Don't forget to bring your **insurance card**.
 @endcallout
 
-Hey @sarah, can you review this?
+Hey @sarah, can you review this? #urgent
   `)
 
 console.log(String(file))
@@ -69,15 +75,19 @@ const processor = unified()
   .use(remarkBfmModifiers)
 ```
 
-Available sub-plugins:
+Available sub-plugins and utilities:
 
-| Import path | Plugin | Description |
+| Import path | Plugin / Export | Description |
 |---|---|---|
 | `@birdcar/markdown` | `remarkBfm` | All features combined |
+| `@birdcar/markdown/frontmatter` | `remarkBfmFrontmatter` | YAML front-matter (`---` blocks) |
 | `@birdcar/markdown/tasks` | `remarkBfmTasks` | `[x]`, `[>]`, `[!]`, etc. in list items |
 | `@birdcar/markdown/modifiers` | `remarkBfmModifiers` | `//due:2025-03-01`, `//hard` |
 | `@birdcar/markdown/mentions` | `remarkBfmMentions` | `@username` inline references |
+| `@birdcar/markdown/hashtags` | `remarkBfmHashtags` | `#project` inline tags |
 | `@birdcar/markdown/directives` | `remarkBfmDirectives` | `@callout`/`@embed` blocks |
+| `@birdcar/markdown/metadata` | `extractMetadata` | Computed fields from parsed documents |
+| `@birdcar/markdown/merge` | `mergeDocuments` | Deep merge of front-matter + body |
 
 ### Work with the AST directly
 
@@ -130,7 +140,90 @@ console.log(String(result))
 // - [>] Call dentist //due:2025-03-01
 ```
 
+### Extract metadata
+
+```ts
+import { unified } from 'unified'
+import remarkParse from 'remark-parse'
+import { remarkBfm, extractMetadata } from '@birdcar/markdown'
+
+const processor = unified().use(remarkParse).use(remarkBfm)
+const tree = processor.parse(`
+---
+title: My Post
+tags:
+  - bfm
+---
+
+A post about #typescript with a [link](https://example.com).
+
+- [x] Write draft
+- [ ] Publish //due:2025-06-01
+`)
+
+const meta = extractMetadata(tree)
+
+meta.frontmatter          // { title: 'My Post', tags: ['bfm'] }
+meta.computed.wordCount   // 9
+meta.computed.readingTime  // 1
+meta.computed.tags         // ['bfm', 'typescript']
+meta.computed.tasks.done   // [{ text: 'Write draft', state: 'done', ... }]
+meta.computed.tasks.open   // [{ text: 'Publish', state: 'open', modifiers: [{ key: 'due', value: '2025-06-01' }] }]
+meta.computed.links        // [{ url: 'https://example.com', title: null }]
+```
+
+Custom computed fields via resolvers:
+
+```ts
+const meta = extractMetadata(tree, {
+  computedFields: [
+    (tree, frontmatter, builtins) => ({
+      isLongRead: builtins.wordCount > 1000,
+    }),
+  ],
+})
+meta.custom.isLongRead // false
+```
+
+### Merge documents
+
+```ts
+import { mergeDocuments } from '@birdcar/markdown'
+import type { BfmDocument } from '@birdcar/markdown'
+
+const a: BfmDocument = { frontmatter: { tags: ['a'] }, body: 'Content A' }
+const b: BfmDocument = { frontmatter: { tags: ['b'], title: 'B' }, body: 'Content B' }
+
+const merged = mergeDocuments([a, b])
+// merged.frontmatter = { tags: ['a', 'b'], title: 'B' }
+// merged.body = 'Content A\n\nContent B'
+
+// Configurable strategies
+mergeDocuments([a, b], { strategy: 'first-wins' })
+mergeDocuments([a, b], { strategy: 'error' })          // throws on scalar conflicts
+mergeDocuments([a, b], { strategy: (key, existing, incoming) => existing + incoming })
+mergeDocuments([a, b], { separator: '\n---\n' })        // custom body separator
+```
+
 ## Syntax Reference
+
+### YAML Front-matter
+
+```markdown
+---
+title: My Document
+tags:
+  - bfm
+  - markdown
+author:
+  name: Nick
+  email: nick@birdcar.dev
+---
+
+Document content starts here.
+```
+
+Front-matter must appear at the very start of the document. The YAML content is parsed and available on the AST node's `data` property.
 
 ### Extended Task Lists
 
@@ -165,6 +258,14 @@ Inline metadata on task items using `//key:value` syntax:
 Hey @sarah, can you review this? Also cc @john.doe and @dev-team.
 ```
 
+### Hashtags
+
+```markdown
+Discussing #typescript and #react-hooks in this post.
+```
+
+Identifiers follow the pattern `[a-zA-Z][a-zA-Z0-9_-]*`. The `#` must not be preceded by an alphanumeric character. Hashtags inside code spans are not parsed.
+
 ### Directive Blocks
 
 **Callouts** (container — body is parsed as markdown):
@@ -185,17 +286,36 @@ A classic internet moment.
 
 ## Types
 
-All AST node types are exported for use with TypeScript:
+All AST node types, metadata types, and contracts are exported:
 
 ```ts
 import type {
+  // AST nodes
   TaskState,          // 'open' | 'done' | 'scheduled' | 'migrated' | 'irrelevant' | 'event' | 'priority'
   TaskMarkerNode,     // { type: 'taskMarker', state: TaskState }
   TaskModifierNode,   // { type: 'taskModifier', key: string, value: string | null }
   MentionNode,        // { type: 'mention', identifier: string }
+  HashtagNode,        // { type: 'hashtag', identifier: string }
+  YamlNode,           // { type: 'yaml', data: Record<string, unknown> }
   DirectiveBlockNode, // { type: 'directiveBlock', name: string, params: Record<string, string> }
+
+  // Metadata
+  DocumentMetadata,   // { frontmatter, computed: BuiltinMetadata, custom }
+  BuiltinMetadata,    // { wordCount, readingTime, tasks, tags, links }
+  TaskCollection,     // { all, open, done, scheduled, ... }
+  ExtractedTask,      // { text, state, modifiers, line }
+  LinkReference,      // { url, title, line }
+
+  // Merge
+  BfmDocument,        // { frontmatter, body }
+  MergeOptions,       // { strategy, separator }
+  MergeStrategy,      // 'last-wins' | 'first-wins' | 'error'
+  MergeResolver,      // (key, existing, incoming) => value
+
+  // Contracts
   EmbedResolver,
   MentionResolver,
+  ComputedFieldResolver,
 } from '@birdcar/markdown'
 ```
 
