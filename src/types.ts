@@ -32,6 +32,7 @@ export type TaskModifierNode = Literal & {
 export type MentionNode = Literal & {
   type: 'mention'
   identifier: string
+  platform?: string
 }
 
 export type HashtagNode = Literal & {

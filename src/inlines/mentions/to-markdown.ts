@@ -9,5 +9,8 @@ export function mentionToMarkdown() {
 }
 
 function handleMention(node: MentionNode): string {
+  if (node.platform) {
+    return `@${node.platform}:${node.identifier}`
+  }
   return `@${node.identifier}`
 }
