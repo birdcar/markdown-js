@@ -23,7 +23,9 @@ function handleDirectiveBlock(
   const closing = `@end${node.name}`
 
   let body = ''
-  if (node.children && node.children.length > 0) {
+  if (node.name === 'math' && node.meta?.content) {
+    body = node.meta.content
+  } else if (node.children && node.children.length > 0) {
     body = state.containerFlow(node, info)
   }
 
@@ -39,10 +41,11 @@ function handleEmbed(node: DirectiveBlockNode): string {
   return `@embed ${url}\n@endembed\n`
 }
 
-function serializeParams(params: Record<string, string>): string {
+function serializeParams(params: Record<string, string | boolean>): string {
   return Object.entries(params)
     .map(([key, value]) => {
-      if (value.includes(' ')) return `${key}="${value}"`
+      if (value === true) return key
+      if (typeof value === 'string' && value.includes(' ')) return `${key}="${value}"`
       return `${key}=${value}`
     })
     .join(' ')

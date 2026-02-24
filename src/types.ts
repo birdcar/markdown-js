@@ -49,8 +49,18 @@ export type YamlNode = Literal & {
 export type DirectiveBlockNode = Parent & {
   type: 'directiveBlock'
   name: string
-  params: Record<string, string>
+  params: Record<string, string | boolean>
   meta?: Record<string, string>
+}
+
+export type FootnoteRefNode = Literal & {
+  type: 'footnoteRef'
+  label: string
+}
+
+export type FootnoteDefNode = Parent & {
+  type: 'footnoteDef'
+  label: string
 }
 
 declare module 'mdast' {
@@ -59,10 +69,12 @@ declare module 'mdast' {
     taskModifier: TaskModifierNode
     mention: MentionNode
     hashtag: HashtagNode
+    footnoteRef: FootnoteRefNode
   }
 
   interface BlockContentMap {
     directiveBlock: DirectiveBlockNode
+    footnoteDef: FootnoteDefNode
   }
 
   interface ListItem {
@@ -108,6 +120,12 @@ declare module 'micromark-util-types' {
     hashtag: 'hashtag'
     hashtagMarker: 'hashtagMarker'
     hashtagIdentifier: 'hashtagIdentifier'
+    footnoteRef: 'footnoteRef'
+    footnoteRefMarker: 'footnoteRefMarker'
+    footnoteRefLabel: 'footnoteRefLabel'
+    footnoteDef: 'footnoteDef'
+    footnoteDefLabel: 'footnoteDefLabel'
+    footnoteDefContent: 'footnoteDefContent'
     _peek: '_peek'
     _mentionPeek: '_mentionPeek'
     _hashtagPeek: '_hashtagPeek'
