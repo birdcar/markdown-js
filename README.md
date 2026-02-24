@@ -85,7 +85,8 @@ Available sub-plugins and utilities:
 | `@birdcar/markdown/modifiers` | `remarkBfmModifiers` | `//due:2025-03-01`, `//hard` |
 | `@birdcar/markdown/mentions` | `remarkBfmMentions` | `@username` inline references |
 | `@birdcar/markdown/hashtags` | `remarkBfmHashtags` | `#project` inline tags |
-| `@birdcar/markdown/directives` | `remarkBfmDirectives` | `@callout`/`@embed` blocks |
+| `@birdcar/markdown/directives` | `remarkBfmDirectives` | `@callout`/`@embed` + 9 new directive blocks |
+| `@birdcar/markdown/footnotes` | `remarkBfmFootnotes` | `[^label]` references and definitions |
 | `@birdcar/markdown/metadata` | `extractMetadata` | Computed fields from parsed documents |
 | `@birdcar/markdown/merge` | `mergeDocuments` | Deep merge of front-matter + body |
 
@@ -284,6 +285,93 @@ A classic internet moment.
 @endembed
 ```
 
+**Details** (container — collapsible section):
+
+```markdown
+@details summary="Click to expand" open
+Hidden content with **markdown** support.
+@enddetails
+```
+
+**Tabs** (container — tabbed content groups):
+
+```markdown
+@tabs
+@tab label="JavaScript" active
+console.log('hello')
+@endtab
+@tab label="Python"
+print('hello')
+@endtab
+@endtabs
+```
+
+**Figure** (container — image with caption):
+
+```markdown
+@figure src="photo.jpg" alt="A photo" id="fig-1"
+Caption text with **markdown**.
+@endfigure
+```
+
+**Aside** (container — sidebar content):
+
+```markdown
+@aside title="Fun Fact"
+Something tangential but interesting.
+@endaside
+```
+
+**TOC** (leaf — auto-generated table of contents):
+
+```markdown
+@toc depth=2 ordered
+@endtoc
+```
+
+**Math** (leaf — LaTeX display block):
+
+```markdown
+@math label="eq-1"
+E = mc^2
+@endmath
+```
+
+**Include** (leaf — file transclusion, resolver-dependent):
+
+```markdown
+@include src="./snippets/example.md" type=markdown
+@endinclude
+```
+
+**Query** (leaf — dynamic content, resolver-dependent):
+
+```markdown
+@query state=open tag=engineering limit=5
+@endquery
+```
+
+**Endnotes** (leaf — footnote rendering location):
+
+```markdown
+@endnotes title="References"
+@endendnotes
+```
+
+### Footnotes
+
+Pandoc-style footnote references and definitions:
+
+```markdown
+Some text with a footnote[^1] and another[^note].
+
+[^1]: First footnote content.
+[^note]: Named footnote with longer content
+    that continues on indented lines.
+```
+
+Footnotes are auto-numbered in order of first reference. If no `@endnotes` directive is present, the endnotes section is appended at the end of the document.
+
 ## Types
 
 All AST node types, metadata types, and contracts are exported:
@@ -297,7 +385,9 @@ import type {
   MentionNode,        // { type: 'mention', identifier: string }
   HashtagNode,        // { type: 'hashtag', identifier: string }
   YamlNode,           // { type: 'yaml', data: Record<string, unknown> }
-  DirectiveBlockNode, // { type: 'directiveBlock', name: string, params: Record<string, string> }
+  DirectiveBlockNode, // { type: 'directiveBlock', name: string, params: Record<string, string | boolean> }
+  FootnoteRefNode,    // { type: 'footnoteRef', label: string }
+  FootnoteDefNode,    // { type: 'footnoteDef', label: string }
 
   // Metadata
   DocumentMetadata,   // { frontmatter, computed: BuiltinMetadata, custom }
