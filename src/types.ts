@@ -56,11 +56,13 @@ export type DirectiveBlockNode = Parent & {
 export type FootnoteRefNode = Literal & {
   type: 'footnoteRef'
   label: string
+  index: number
 }
 
 export type FootnoteDefNode = Parent & {
   type: 'footnoteDef'
   label: string
+  index: number
 }
 
 declare module 'mdast' {

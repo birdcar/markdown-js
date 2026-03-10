@@ -10,11 +10,11 @@ import { remarkBfmFootnotes } from './inlines/footnotes/index.js'
 
 export function remarkBfm(this: Processor<Root>) {
   remarkBfmFrontmatter.call(this)
+  const directivesTransform = remarkBfmDirectives.call(this)
   remarkBfmTasks.call(this)
   remarkBfmModifiers.call(this)
   remarkBfmMentions.call(this)
   remarkBfmHashtags.call(this)
-  const directivesTransform = remarkBfmDirectives.call(this)
   const footnotesTransform = remarkBfmFootnotes.call(this)
 
   return function transform(tree: Root) {

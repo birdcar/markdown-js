@@ -107,7 +107,9 @@ const tokenizeFootnoteDef: Tokenizer = function (effects, ok, nok) {
 
   function beforeContent(code: number | null): State | undefined {
     if (markdownSpace(code)) {
+      effects.enter('footnoteDefContent')
       effects.consume(code)
+      effects.exit('footnoteDefContent')
       return beforeContent
     }
     effects.enter('footnoteDefContent')
@@ -139,8 +141,6 @@ const tokenizeFootnoteDef: Tokenizer = function (effects, ok, nok) {
   }
 
   function continuationIndent(code: number | null): State | undefined {
-    // Consume leading spaces (up to 4)
-    let spaces = 0
     if (markdownSpace(code)) {
       effects.enter('footnoteDefContent')
       return consumeIndent(code)
@@ -176,10 +176,18 @@ const tokenizeContinuation: Tokenizer = function (effects, ok, nok) {
   }
 
   function checkIndent(code: number | null): State | undefined {
+    if (code === 9) {
+      effects.enter('footnoteDefContent')
+      effects.consume(code)
+      effects.exit('footnoteDefContent')
+      return ok
+    }
     if (markdownSpace(code)) {
       spaces++
+      effects.enter('footnoteDefContent')
       effects.consume(code)
-      if (spaces >= 2) return ok // At least 2 spaces = continuation
+      effects.exit('footnoteDefContent')
+      if (spaces >= 4) return ok
       return checkIndent
     }
     return nok(code)

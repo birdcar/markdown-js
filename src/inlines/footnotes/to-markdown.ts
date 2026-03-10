@@ -15,8 +15,13 @@ function handleFootnoteDef(node: any, _parent: any, state: any, info: any): stri
   let content = ''
   if (node.children && node.children.length > 0) {
     content = state.containerFlow(node, info)
-  } else if (node._rawContent) {
-    content = node._rawContent
+    // Indent continuation lines with 4 spaces
+    const lines = content.split('\n')
+    content = lines.map((line: string, i: number) => {
+      if (i === 0) return line
+      if (line.trim() === '') return ''
+      return `    ${line}`
+    }).join('\n')
   }
   return `[^${node.label}]: ${content}\n`
 }
