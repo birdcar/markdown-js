@@ -157,6 +157,63 @@ describe('tabs directive', () => {
     expect(directives[0].data.hName).toBe('div')
     expect(directives[0].data.hProperties.role).toBe('tabpanel')
   })
+
+  it('prepends nav node with tablist role to tabs children', () => {
+    const md = '@tabs\n@tab label=A\nContent A.\n@endtab\n@tab label=B\nContent B.\n@endtab\n@endtabs\n'
+    const tree = parseAndTransform(md)
+    const directives = findNodes(tree, 'directiveBlock')
+    const tabs = directives.find((d: any) => d.name === 'tabs')
+    const navNode = tabs.children[0]
+    expect(navNode.data.hProperties.role).toBe('tablist')
+    expect(navNode.data.hProperties.class).toBe('tabs__nav')
+  })
+
+  it('nav buttons have tab role and aria-selected', () => {
+    const md = '@tabs\n@tab label=A\nContent A.\n@endtab\n@tab label=B\nContent B.\n@endtab\n@endtabs\n'
+    const tree = parseAndTransform(md)
+    const directives = findNodes(tree, 'directiveBlock')
+    const tabs = directives.find((d: any) => d.name === 'tabs')
+    const navNode = tabs.children[0]
+    expect(navNode.children[0].data.hProperties.role).toBe('tab')
+    expect(navNode.children[0].data.hProperties['aria-selected']).toBe('true')
+    expect(navNode.children[1].data.hProperties['aria-selected']).toBe('false')
+  })
+
+  it('default active is first tab when no active param set', () => {
+    const md = '@tabs\n@tab label=A\nContent A.\n@endtab\n@tab label=B\nContent B.\n@endtab\n@endtabs\n'
+    const tree = parseAndTransform(md)
+    const directives = findNodes(tree, 'directiveBlock')
+    const tabs = directives.find((d: any) => d.name === 'tabs')
+    const navNode = tabs.children[0]
+    expect(navNode.children[0].data.hProperties.class).toContain('tabs__tab--active')
+    expect(navNode.children[1].data.hProperties.class).not.toContain('tabs__tab--active')
+  })
+
+  it('respects active param on second tab', () => {
+    const md = '@tabs\n@tab label=A\nContent A.\n@endtab\n@tab label=B active\nContent B.\n@endtab\n@endtabs\n'
+    const tree = parseAndTransform(md)
+    const directives = findNodes(tree, 'directiveBlock')
+    const tabs = directives.find((d: any) => d.name === 'tabs')
+    const navNode = tabs.children[0]
+    expect(navNode.children[0].data.hProperties.class).not.toContain('tabs__tab--active')
+    expect(navNode.children[1].data.hProperties.class).toContain('tabs__tab--active')
+  })
+
+  it('active tab panel gets --active class', () => {
+    const md = '@tab label=A active\nContent.\n@endtab\n'
+    const tree = parseAndTransform(md)
+    const directives = findNodes(tree, 'directiveBlock')
+    const tab = directives.find((d: any) => d.name === 'tab')
+    expect(tab.data.hProperties.class).toContain('tabs__panel--active')
+  })
+
+  it('inactive tab panel does not get --active class', () => {
+    const md = '@tab label=A\nContent.\n@endtab\n'
+    const tree = parseAndTransform(md)
+    const directives = findNodes(tree, 'directiveBlock')
+    const tab = directives.find((d: any) => d.name === 'tab')
+    expect(tab.data.hProperties.class).not.toContain('tabs__panel--active')
+  })
 })
 
 describe('math directive', () => {
@@ -188,11 +245,19 @@ describe('math directive', () => {
     expect(directives[0].data.hProperties.id).toBe('eq-1')
   })
 
+  it('sets aria-label to raw LaTeX content', () => {
+    const md = '@math\nE = mc^2\n@endmath\n'
+    const tree = parseAndTransform(md)
+    const directives = findNodes(tree, 'directiveBlock')
+    expect(directives[0].data.hProperties['aria-label']).toBe('E = mc^2')
+  })
+
   it('renders math to HTML with raw text content', async () => {
     const md = '@math\nE = mc^2\n@endmath\n'
     const html = await toHtml(md)
     expect(html).toContain('E = mc^2')
     expect(html).toContain('class="math"')
+    expect(html).toContain('aria-label')
   })
 })
 
@@ -218,30 +283,77 @@ describe('toc directive', () => {
   })
 
   it('respects depth param', () => {
-    const md = '# H1\n\n@toc depth=1\n@endtoc\n\n## H2\n\n### H3\n'
+    const md = '@toc depth=1\n@endtoc\n\n# H1\n\n## H2\n\n### H3\n'
     const tree = parseAndTransform(md)
     const directives = findNodes(tree, 'directiveBlock')
     const links = findNodes(directives[0], 'link')
     // depth=1 means only h1 headings
     expect(links).toHaveLength(1)
   })
+
+  it('produces nested lists for h1 > h2 > h3 hierarchy', () => {
+    const md = '@toc\n@endtoc\n\n# Top\n\n## Sub\n\n### SubSub\n'
+    const tree = parseAndTransform(md)
+    const directives = findNodes(tree, 'directiveBlock')
+    const lists = findNodes(directives[0], 'list')
+    // Outer list + nested lists
+    expect(lists.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('respects ordered flag', () => {
+    const md = '@toc ordered\n@endtoc\n\n## A\n\n## B\n'
+    const tree = parseAndTransform(md)
+    const directives = findNodes(tree, 'directiveBlock')
+    const lists = findNodes(directives[0], 'list')
+    expect(lists[0].ordered).toBe(true)
+  })
+
+  it('unordered by default', () => {
+    const md = '@toc\n@endtoc\n\n## A\n\n## B\n'
+    const tree = parseAndTransform(md)
+    const directives = findNodes(tree, 'directiveBlock')
+    const lists = findNodes(directives[0], 'list')
+    expect(lists[0].ordered).toBe(false)
+  })
+
+  it('excludes the heading immediately preceding the toc', () => {
+    const md = '## Table of Contents\n\n@toc\n@endtoc\n\n## Section A\n\n## Section B\n'
+    const tree = parseAndTransform(md)
+    const directives = findNodes(tree, 'directiveBlock')
+    const links = findNodes(directives[0], 'link')
+    const linkTexts = links.map((l: any) => l.children[0].value)
+    expect(linkTexts).not.toContain('Table of Contents')
+    expect(linkTexts).toContain('Section A')
+    expect(linkTexts).toContain('Section B')
+  })
+
+  it('depth=2 excludes h3 headings', () => {
+    const md = '@toc depth=2\n@endtoc\n\n## H2\n\n### H3\n'
+    const tree = parseAndTransform(md)
+    const directives = findNodes(tree, 'directiveBlock')
+    const links = findNodes(directives[0], 'link')
+    const linkTexts = links.map((l: any) => l.children[0].value)
+    expect(linkTexts).toContain('H2')
+    expect(linkTexts).not.toContain('H3')
+  })
 })
 
 describe('include directive', () => {
   it('parses include as placeholder', () => {
-    const md = '@include src=other-doc.md\n@endinclude\n'
+    const md = '@include path=other-doc.md\n@endinclude\n'
     const tree = parseAndTransform(md)
     const directives = findNodes(tree, 'directiveBlock')
     expect(directives).toHaveLength(1)
     expect(directives[0].name).toBe('include')
     expect(directives[0].data.hName).toBe('div')
-    expect(directives[0].data.hProperties['data-src']).toBe('other-doc.md')
+    expect(directives[0].data.hProperties['data-path']).toBe('other-doc.md')
   })
 
   it('handles include with heading param', () => {
-    const md = '@include src=doc.md heading="Section 1"\n@endinclude\n'
+    const md = '@include path=doc.md heading="Section 1"\n@endinclude\n'
     const tree = parseAndTransform(md)
     const directives = findNodes(tree, 'directiveBlock')
+    expect(directives[0].data.hProperties['data-path']).toBe('doc.md')
     expect(directives[0].data.hProperties['data-heading']).toBe('Section 1')
   })
 })
@@ -256,11 +368,39 @@ describe('query directive', () => {
     expect(directives[0].data.hProperties['data-query-type']).toBe('backlinks')
   })
 
-  it('handles query with from param', () => {
-    const md = '@query type=tagged from=projects\n@endquery\n'
+  it('handles query with state param', () => {
+    const md = '@query type=tasks state=open\n@endquery\n'
     const tree = parseAndTransform(md)
     const directives = findNodes(tree, 'directiveBlock')
-    expect(directives[0].data.hProperties['data-query-from']).toBe('projects')
+    expect(directives[0].data.hProperties['data-query-state']).toBe('open')
+  })
+
+  it('handles query with tag param', () => {
+    const md = '@query type=tagged tag=projects\n@endquery\n'
+    const tree = parseAndTransform(md)
+    const directives = findNodes(tree, 'directiveBlock')
+    expect(directives[0].data.hProperties['data-query-tag']).toBe('projects')
+  })
+
+  it('handles query with limit param', () => {
+    const md = '@query type=tasks limit=10\n@endquery\n'
+    const tree = parseAndTransform(md)
+    const directives = findNodes(tree, 'directiveBlock')
+    expect(directives[0].data.hProperties['data-query-limit']).toBe('10')
+  })
+
+  it('handles query with sort param', () => {
+    const md = '@query type=tasks sort=date\n@endquery\n'
+    const tree = parseAndTransform(md)
+    const directives = findNodes(tree, 'directiveBlock')
+    expect(directives[0].data.hProperties['data-query-sort']).toBe('date')
+  })
+
+  it('does not set data-query-from', () => {
+    const md = '@query type=tasks\n@endquery\n'
+    const tree = parseAndTransform(md)
+    const directives = findNodes(tree, 'directiveBlock')
+    expect(directives[0].data.hProperties['data-query-from']).toBeUndefined()
   })
 })
 
@@ -273,6 +413,22 @@ describe('endnotes directive', () => {
     expect(directives[0].name).toBe('endnotes')
     expect(directives[0].data.hName).toBe('section')
     expect(directives[0].data.hProperties.role).toBe('doc-endnotes')
+  })
+
+  it('prepends heading when title param is set', () => {
+    const md = '@endnotes title="Notes"\n@endendnotes\n'
+    const tree = parseAndTransform(md)
+    const directives = findNodes(tree, 'directiveBlock')
+    expect(directives[0].children[0].type).toBe('heading')
+    expect(directives[0].children[0].depth).toBe(2)
+    expect(directives[0].children[0].children[0].value).toBe('Notes')
+  })
+
+  it('renders endnotes title to HTML', async () => {
+    const md = '@endnotes title="Notes"\n@endendnotes\n'
+    const html = await toHtml(md)
+    expect(html).toContain('<h2>Notes</h2>')
+    expect(html).toContain('class="endnotes"')
   })
 })
 

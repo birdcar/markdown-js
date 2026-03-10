@@ -154,21 +154,59 @@ function applyDataToDirective(directive: any, tree: Root): void {
         const props: Record<string, string> = { class: 'tabs' }
         if (directive.params.id) props['data-sync-id'] = String(directive.params.id)
         directive.data = { hName: 'div', hProperties: props }
+
+        // Build nav from tab children
+        const tabChildren = (directive.children || []).filter(
+          (c: any) => c.type === 'directiveBlock' && c.name === 'tab'
+        )
+        const hasActive = tabChildren.some((t: any) => t.params.active === true)
+
+        const navButtons = tabChildren.map((tab: any, i: number) => {
+          const isActive = tab.params.active === true || (!hasActive && i === 0)
+          return {
+            type: 'text', value: String(tab.params.label || ''),
+            data: {
+              hName: 'button',
+              hProperties: {
+                class: isActive ? 'tabs__tab tabs__tab--active' : 'tabs__tab',
+                role: 'tab',
+                'aria-selected': isActive ? 'true' : 'false',
+              },
+            },
+          }
+        })
+
+        const navNode = {
+          type: 'paragraph',
+          children: navButtons,
+          data: { hName: 'div', hProperties: { class: 'tabs__nav', role: 'tablist' } },
+        }
+
+        directive.children = [navNode, ...(directive.children || [])]
         break
       }
       case 'tab': {
-        const props: Record<string, string> = { class: 'tabs__panel', role: 'tabpanel' }
+        const isActive = directive.params.active === true
+        const props: Record<string, string> = {
+          class: isActive ? 'tabs__panel tabs__panel--active' : 'tabs__panel',
+          role: 'tabpanel',
+        }
         if (directive.params.label) props['aria-label'] = String(directive.params.label)
         directive.data = { hName: 'div', hProperties: props }
         break
       }
       case 'math': {
-        const props: Record<string, string> = { class: 'math', role: 'math' }
+        const content = directive.meta?.content || ''
+        const props: Record<string, string> = {
+          class: 'math',
+          role: 'math',
+          'aria-label': content,
+        }
         if (directive.params.label) props.id = String(directive.params.label)
         directive.data = {
           hName: 'div',
           hProperties: props,
-          hChildren: [{ type: 'text', value: directive.meta?.content || '' }],
+          hChildren: [{ type: 'text', value: content }],
         }
         break
       }
@@ -182,8 +220,9 @@ function applyDataToDirective(directive: any, tree: Root): void {
         break
       }
       case 'include': {
+        const path = directive.params._positional?.[0] || directive.params.path || ''
         const props: Record<string, string> = { class: 'include' }
-        if (directive.params.src) props['data-src'] = String(directive.params.src)
+        if (path) props['data-path'] = String(path)
         if (directive.params.heading) props['data-heading'] = String(directive.params.heading)
         directive.data = { hName: 'div', hProperties: props }
         break
@@ -191,7 +230,10 @@ function applyDataToDirective(directive: any, tree: Root): void {
       case 'query': {
         const props: Record<string, string> = { class: 'query' }
         if (directive.params.type) props['data-query-type'] = String(directive.params.type)
-        if (directive.params.from) props['data-query-from'] = String(directive.params.from)
+        if (directive.params.state) props['data-query-state'] = String(directive.params.state)
+        if (directive.params.tag) props['data-query-tag'] = String(directive.params.tag)
+        if (directive.params.limit) props['data-query-limit'] = String(directive.params.limit)
+        if (directive.params.sort) props['data-query-sort'] = String(directive.params.sort)
         directive.data = { hName: 'div', hProperties: props }
         break
       }
@@ -199,6 +241,14 @@ function applyDataToDirective(directive: any, tree: Root): void {
         directive.data = {
           hName: 'section',
           hProperties: { class: 'endnotes', role: 'doc-endnotes' },
+        }
+        if (directive.params.title) {
+          const heading = {
+            type: 'heading',
+            depth: 2,
+            children: [{ type: 'text', value: String(directive.params.title) }],
+          }
+          directive.children = [heading, ...(directive.children || [])]
         }
         break
       }
@@ -211,50 +261,72 @@ function buildToc(tree: Root, tocNode: any): void {
 
   const headings: Array<{ depth: number; text: string; id: string }> = []
 
-  for (const node of tree.children) {
-    if ((node as any).type === 'heading') {
-      const heading = node as any
-      if (heading.depth <= maxDepth) {
-        const text = extractText(heading)
-        const id = slugify(text)
-        headings.push({ depth: heading.depth, text, id })
-        // Set id on heading for anchor linking
-        if (!heading.data) heading.data = {}
-        if (!heading.data.hProperties) heading.data.hProperties = {}
-        heading.data.hProperties.id = id
-      }
-    }
+  // Find the index of the tocNode in tree.children
+  const tocIndex = tree.children.indexOf(tocNode as any)
+
+  for (let i = 0; i < tree.children.length; i++) {
+    const node = tree.children[i] as any
+    if (node.type !== 'heading') continue
+    if (node.depth > maxDepth) continue
+
+    // Exclude the heading immediately preceding the @toc directive
+    if (i === tocIndex - 1) continue
+    // Skip the toc node itself (shouldn't be a heading, but defensive)
+    if (i === tocIndex) continue
+
+    const text = extractText(node)
+    const id = slugify(text)
+    headings.push({ depth: node.depth, text, id })
+
+    if (!node.data) node.data = {}
+    if (!node.data.hProperties) node.data.hProperties = {}
+    node.data.hProperties.id = id
   }
 
   if (headings.length === 0) return
-
-  // Build nested list
-  tocNode.children = [buildListFromHeadings(headings, ordered)]
+  tocNode.children = [buildNestedList(headings, 0, headings.length, ordered)]
 }
 
-function buildListFromHeadings(
+function buildNestedList(
   headings: Array<{ depth: number; text: string; id: string }>,
+  start: number,
+  end: number,
   ordered: boolean,
 ): any {
-  const listType = ordered ? 'list' : 'list'
   const items: any[] = []
+  let i = start
 
-  for (const h of headings) {
-    items.push({
-      type: 'listItem',
+  while (i < end) {
+    const h = headings[i]
+    const linkNode = {
+      type: 'paragraph',
       children: [{
-        type: 'paragraph',
-        children: [{
-          type: 'link',
-          url: `#${h.id}`,
-          children: [{ type: 'text', value: h.text }],
-        }],
+        type: 'link',
+        url: `#${h.id}`,
+        children: [{ type: 'text', value: h.text }],
       }],
-    })
+    }
+
+    // Find child headings (deeper than current)
+    let j = i + 1
+    while (j < end && headings[j].depth > h.depth) j++
+
+    const item: any = {
+      type: 'listItem',
+      children: [linkNode],
+    }
+
+    // If there are child headings, nest them
+    if (j > i + 1) {
+      item.children.push(buildNestedList(headings, i + 1, j, ordered))
+    }
+
+    items.push(item)
+    i = j
   }
 
   return {
-    type: listType,
+    type: 'list',
     ordered,
     spread: false,
     children: items,
