@@ -1,4 +1,8 @@
+import type { Root } from 'mdast'
 import type { MergeOptions, MergeStrategy, MergeResolver, BfmDocument } from './types.js'
+import type { DocumentMetadata } from '../metadata/types.js'
+import { extractMetadata } from '../metadata/extract.js'
+import type { ExtractMetadataOptions } from '../metadata/extract.js'
 
 export function mergeDocuments(
   docs: BfmDocument[],
@@ -15,6 +19,18 @@ export function mergeDocuments(
     frontmatter: deepMerge(acc.frontmatter, doc.frontmatter, strategy),
     body: acc.body ? `${acc.body}${separator}${doc.body}` : doc.body,
   }))
+}
+
+export function mergeAndExtract(
+  docs: BfmDocument[],
+  parse: (markdown: string) => Root,
+  options?: MergeOptions & { extractOptions?: ExtractMetadataOptions },
+): { document: BfmDocument; metadata: DocumentMetadata } {
+  const document = mergeDocuments(docs, options)
+  const tree = parse(document.body)
+  const metadata = extractMetadata(tree, options?.extractOptions)
+  metadata.frontmatter = document.frontmatter
+  return { document, metadata }
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

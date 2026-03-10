@@ -150,6 +150,38 @@ describe('metadata extraction', () => {
     })
   })
 
+  describe('footnotes', () => {
+    it('extracts footnote references in order of first appearance', () => {
+      const tree = parse('Some text[^note1] and more[^note2].\n')
+      const meta = extractMetadata(tree)
+      expect(meta.computed.footnotes).toHaveLength(2)
+      expect(meta.computed.footnotes[0].label).toBe('note1')
+      expect(meta.computed.footnotes[0].index).toBe(1)
+      expect(meta.computed.footnotes[1].label).toBe('note2')
+      expect(meta.computed.footnotes[1].index).toBe(2)
+    })
+
+    it('deduplicates repeated references to the same label', () => {
+      const tree = parse('First[^a] and again[^a] and other[^b].\n')
+      const meta = extractMetadata(tree)
+      expect(meta.computed.footnotes).toHaveLength(2)
+      expect(meta.computed.footnotes[0].label).toBe('a')
+      expect(meta.computed.footnotes[1].label).toBe('b')
+    })
+
+    it('returns empty array when no footnotes', () => {
+      const tree = parse('No footnotes here.\n')
+      const meta = extractMetadata(tree)
+      expect(meta.computed.footnotes).toEqual([])
+    })
+
+    it('captures line number of first appearance', () => {
+      const tree = parse('Text[^ref] here.\n')
+      const meta = extractMetadata(tree)
+      expect(meta.computed.footnotes[0].line).toBeGreaterThan(0)
+    })
+  })
+
   describe('frontmatter', () => {
     it('returns parsed front-matter', () => {
       const tree = parse('---\ntitle: Test\ncount: 42\n---\n\nContent.\n')

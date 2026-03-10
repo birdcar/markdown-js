@@ -6,4 +6,5 @@ export type {
   TaskCollection,
   ExtractedTask,
   LinkReference,
+  FootnoteReference,
 } from './types.js'

@@ -9,7 +9,7 @@ export { remarkBfmDirectives } from './blocks/index.js'
 export { remarkBfmFootnotes } from './inlines/footnotes/index.js'
 
 export { extractMetadata } from './metadata/index.js'
-export { mergeDocuments } from './merge/index.js'
+export { mergeDocuments, mergeAndExtract } from './merge/index.js'
 
 export type { TaskState, TaskMarkerNode, HashtagNode, YamlNode, FootnoteRefNode, FootnoteDefNode } from './types.js'
 export type { TaskModifierNode } from './inlines/modifiers/index.js'
@@ -26,6 +26,7 @@ export type {
   TaskCollection,
   ExtractedTask,
   LinkReference,
+  FootnoteReference,
 } from './metadata/index.js'
 
 export type {

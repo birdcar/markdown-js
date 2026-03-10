@@ -12,6 +12,7 @@ export interface BuiltinMetadata {
   tasks: TaskCollection
   tags: string[]
   links: LinkReference[]
+  footnotes: FootnoteReference[]
 }
 
 export interface TaskCollection {
@@ -35,5 +36,11 @@ export interface ExtractedTask {
 export interface LinkReference {
   url: string
   title: string | null
+  line: number
+}
+
+export interface FootnoteReference {
+  label: string
+  index: number
   line: number
 }

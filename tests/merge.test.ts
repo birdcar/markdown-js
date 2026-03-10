@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { mergeDocuments } from '../src/merge/merge.js'
+import { mergeDocuments, mergeAndExtract } from '../src/merge/merge.js'
 import type { BfmDocument } from '../src/merge/types.js'
+import { parse } from './helpers.js'
 
 describe('mergeDocuments', () => {
   it('merges two documents with non-overlapping keys', () => {
@@ -89,5 +90,38 @@ describe('mergeDocuments', () => {
     const b: BfmDocument = { frontmatter: {}, body: 'B' }
     const result = mergeDocuments([a, b], { separator: '\n---\n' })
     expect(result.body).toBe('A\n---\nB')
+  })
+})
+
+describe('mergeAndExtract', () => {
+  it('recomputes wordCount for merged documents', () => {
+    const tenWords = 'one two three four five six seven eight nine ten'
+    const twentyWords = Array(20).fill('word').join(' ')
+    const a: BfmDocument = { frontmatter: {}, body: tenWords }
+    const b: BfmDocument = { frontmatter: {}, body: twentyWords }
+    const { metadata } = mergeAndExtract([a, b], parse)
+    expect(metadata.computed.wordCount).toBe(30)
+  })
+
+  it('extracts inline tags from merged body', () => {
+    const a: BfmDocument = { frontmatter: {}, body: 'Doc A #beta' }
+    const b: BfmDocument = { frontmatter: {}, body: 'Doc B #delta' }
+    const { metadata } = mergeAndExtract([a, b], parse)
+    expect(metadata.computed.tags).toContain('beta')
+    expect(metadata.computed.tags).toContain('delta')
+  })
+
+  it('merges frontmatter into returned metadata', () => {
+    const a: BfmDocument = { frontmatter: { title: 'A' }, body: 'Body A' }
+    const b: BfmDocument = { frontmatter: { author: 'B' }, body: 'Body B' }
+    const { metadata } = mergeAndExtract([a, b], parse)
+    expect(metadata.frontmatter).toEqual({ title: 'A', author: 'B' })
+  })
+
+  it('returns the merged document', () => {
+    const a: BfmDocument = { frontmatter: {}, body: 'A' }
+    const b: BfmDocument = { frontmatter: {}, body: 'B' }
+    const { document } = mergeAndExtract([a, b], parse)
+    expect(document.body).toBe('A\n\nB')
   })
 })

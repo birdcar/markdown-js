@@ -8,6 +8,7 @@ import type {
   TaskCollection,
   ExtractedTask,
   LinkReference,
+  FootnoteReference,
 } from './types.js'
 
 export interface ExtractMetadataOptions {
@@ -49,8 +50,9 @@ function computeBuiltins(
   const tasks = extractTasks(tree)
   const tags = extractTags(tree, frontmatter)
   const links = extractLinks(tree)
+  const footnotes = extractFootnotes(tree)
 
-  return { wordCount, readingTime, tasks, tags, links }
+  return { wordCount, readingTime, tasks, tags, links, footnotes }
 }
 
 function computeWordCount(tree: Root): number {
@@ -176,6 +178,26 @@ function extractLinks(tree: Root): LinkReference[] {
   })
 
   return links
+}
+
+function extractFootnotes(tree: Root): FootnoteReference[] {
+  const footnotes: FootnoteReference[] = []
+  const seen = new Set<string>()
+  let counter = 0
+
+  visit(tree, 'footnoteRef' as any, (node: any) => {
+    if (!seen.has(node.label)) {
+      seen.add(node.label)
+      counter++
+      footnotes.push({
+        label: node.label,
+        index: counter,
+        line: node.position?.start.line ?? 0,
+      })
+    }
+  })
+
+  return footnotes
 }
 
 function runCustomResolvers(
