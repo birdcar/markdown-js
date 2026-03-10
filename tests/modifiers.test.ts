@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { parseAndTransform, findNodes } from './helpers.js'
+import { parseAndTransform, findNodes, stringify } from './helpers.js'
 
 const fixturesDir = join(import.meta.dirname, '..', 'spec', 'fixtures')
 
@@ -63,6 +63,22 @@ describe('task modifiers', () => {
     expect(keys).toContain('wait')
     expect(keys).toContain('cron')
     expect(keys).toContain('hard')
+  })
+
+  it('parses //after: modifier key', () => {
+    const md = '- [ ] Check in after launch //after:2025-06-01\n'
+    const tree = parseAndTransform(md)
+
+    const mods = findNodes(tree, 'taskModifier')
+    expect(mods).toHaveLength(1)
+    expect(mods[0].key).toBe('after')
+    expect(mods[0].value).toBe('2025-06-01')
+  })
+
+  it('roundtrip: //after: modifier is preserved after parse and serialize', () => {
+    const md = '- [ ] Check in after launch //after:2025-06-01\n'
+    const result = stringify(md)
+    expect(result).toContain('//after:2025-06-01')
   })
 
   it('does not parse // in URLs', () => {
