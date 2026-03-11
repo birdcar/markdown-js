@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.4](https://github.com/birdcar/markdown-js/compare/markdown-v0.0.3...markdown-v0.0.4) (2026-03-11)
+
+
+### Bug Fixes
+
+* Add remark-gfm as required peer dependency ([908c4e8](https://github.com/birdcar/markdown-js/commit/908c4e80490b377f276a3a2ac07eb288eea0dea8))
+
 ## [0.0.3](https://github.com/birdcar/markdown-js/compare/markdown-v0.0.2...markdown-v0.0.3) (2026-03-11)
 
 
