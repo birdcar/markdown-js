@@ -238,3 +238,32 @@ describe('registration API', () => {
     expect(directives[0].data.hProperties['data-count']).toBe('1')
   })
 })
+
+describe('deck parity', () => {
+  it('@click produces container directiveBlock with parsed children and no data', () => {
+    const md = '@click at=2\nReveal me\n@endclick\n'
+    const tree = parseAndTransform(md)
+
+    const directives = findNodes(tree, 'directiveBlock')
+    expect(directives).toHaveLength(1)
+    expect(directives[0].name).toBe('click')
+    expect(directives[0].params.at).toBe('2')
+    expect(directives[0].data).toBeUndefined()
+    expect(directives[0].children.length).toBeGreaterThan(0)
+    expect(directives[0].children[0].type).toBe('paragraph')
+  })
+
+  it('@steps produces container directiveBlock with list child and no data', () => {
+    const md = '@steps\n\n- a\n- b\n\n@endsteps\n'
+    const tree = parseAndTransform(md)
+
+    const directives = findNodes(tree, 'directiveBlock')
+    expect(directives).toHaveLength(1)
+    expect(directives[0].name).toBe('steps')
+    expect(directives[0].data).toBeUndefined()
+
+    const listChildren = directives[0].children.filter((c: any) => c.type === 'list')
+    expect(listChildren).toHaveLength(1)
+    expect(listChildren[0].children).toHaveLength(2)
+  })
+})

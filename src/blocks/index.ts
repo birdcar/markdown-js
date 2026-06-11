@@ -1,13 +1,9 @@
 import type { Root } from 'mdast'
 import type { Processor } from 'unified'
-import { combineExtensions } from 'micromark-util-combine-extensions'
 import { fromMarkdown } from 'mdast-util-from-markdown'
-import { calloutSyntax } from './callout/syntax.js'
-import { calloutToMarkdown } from './callout/to-markdown.js'
-import { embedSyntax } from './embed/syntax.js'
-import { embedFromMarkdown } from './embed/from-markdown.js'
 import { genericDirectiveSyntax } from './generic/syntax.js'
 import { genericDirectiveFromMarkdown } from './generic/from-markdown.js'
+import { directiveToMarkdown } from './generic/to-markdown.js'
 import { BUILTIN_DIRECTIVES } from './builtins.js'
 import { resolveToHast } from './registry.js'
 import type { RemarkBfmOptions, DirectiveDefinition } from './registry.js'
@@ -24,12 +20,9 @@ export function remarkBfmDirectives(this: Processor<Root>, options?: RemarkBfmOp
   const fromMarkdownExtensions = (data.fromMarkdownExtensions ??= []) as any[]
   const toMarkdownExtensions = (data.toMarkdownExtensions ??= []) as any[]
 
-  micromarkExtensions.push(
-    combineExtensions([genericDirectiveSyntax(), calloutSyntax(), embedSyntax()]),
-  )
+  micromarkExtensions.push(genericDirectiveSyntax())
   fromMarkdownExtensions.push(genericDirectiveFromMarkdown())
-  fromMarkdownExtensions.push(embedFromMarkdown())
-  toMarkdownExtensions.push(calloutToMarkdown())
+  toMarkdownExtensions.push(directiveToMarkdown())
 
   const self = this
   return function transform(tree: Root) {

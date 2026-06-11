@@ -187,6 +187,47 @@ export const BUILTIN_DIRECTIVES: Record<string, DirectiveDefinition> = {
       }
     },
   },
+
+  callout: {
+    kind: 'container',
+    transform: (n) => {
+      n.data = {
+        hName: 'aside',
+        hProperties: {
+          class: `callout callout--${String(n.params.type ?? 'info')}`,
+        },
+      }
+      if (n.params.title) {
+        const headerNode = {
+          type: 'paragraph',
+          children: [{ type: 'text', value: String(n.params.title) }],
+          data: { hName: 'div', hProperties: { class: 'callout__header' } },
+        }
+        n.children = [headerNode as any, ...(n.children || [])]
+      }
+    },
+  },
+
+  embed: {
+    kind: 'leaf',
+    transform: (n) => {
+      const url = String((n.params._positional as unknown as string[] | undefined)?.[0] ?? n.params.url ?? '')
+      const caption = n.meta?.body ?? ''
+      n.data = {
+        hName: 'figure',
+        hProperties: { class: 'embed', 'data-url': url },
+      }
+      if (caption) {
+        n.children = [
+          {
+            type: 'paragraph',
+            children: [{ type: 'text', value: caption }],
+            data: { hName: 'figcaption' },
+          } as any,
+        ]
+      }
+    },
+  },
 }
 
 function buildToc(tree: Root, tocNode: DirectiveBlockNode): void {
