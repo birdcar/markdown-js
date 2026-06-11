@@ -7,10 +7,11 @@ import { remarkBfmMentions } from './inlines/mentions/index.js'
 import { remarkBfmHashtags } from './inlines/hashtags/index.js'
 import { remarkBfmDirectives } from './blocks/index.js'
 import { remarkBfmFootnotes } from './inlines/footnotes/index.js'
+import type { RemarkBfmOptions } from './blocks/registry.js'
 
-export function remarkBfm(this: Processor<Root>) {
+export function remarkBfm(this: Processor<Root>, options?: RemarkBfmOptions) {
   remarkBfmFrontmatter.call(this)
-  const directivesTransform = remarkBfmDirectives.call(this)
+  const directivesTransform = remarkBfmDirectives.call(this, options)
   remarkBfmTasks.call(this)
   remarkBfmModifiers.call(this)
   remarkBfmMentions.call(this)

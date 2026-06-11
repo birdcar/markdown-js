@@ -223,7 +223,7 @@ describe('math directive', () => {
     const directives = findNodes(tree, 'directiveBlock')
     expect(directives).toHaveLength(1)
     expect(directives[0].name).toBe('math')
-    expect(directives[0].meta.content).toBe('E = mc^2')
+    expect(directives[0].meta.body).toBe('E = mc^2')
     expect(directives[0].data.hName).toBe('div')
     expect(directives[0].data.hProperties.class).toBe('math')
     expect(directives[0].data.hProperties.role).toBe('math')
@@ -233,7 +233,7 @@ describe('math directive', () => {
     const md = '@math\n\\frac{a}{b} + \\sqrt{c}\n@endmath\n'
     const tree = parseAndTransform(md)
     const directives = findNodes(tree, 'directiveBlock')
-    expect(directives[0].meta.content).toBe('\\frac{a}{b} + \\sqrt{c}')
+    expect(directives[0].meta.body).toBe('\\frac{a}{b} + \\sqrt{c}')
     // Should have no markdown children
     expect(directives[0].children).toHaveLength(0)
   })
@@ -472,5 +472,25 @@ describe('generic directive edge cases', () => {
     expect(directives[0].params.open).toBe(true)
     expect(directives[0].params.summary).toBe('Title')
     expect(directives[0].params.collapsible).toBe(true)
+  })
+
+  it('click is unregistered: body re-parsed as children, no render data', () => {
+    const md = '@click\nClick content.\n@endclick\n'
+    const tree = parseAndTransform(md)
+    const directives = findNodes(tree, 'directiveBlock')
+    expect(directives).toHaveLength(1)
+    expect(directives[0].name).toBe('click')
+    expect(directives[0].data).toBeUndefined()
+    expect(directives[0].children.length).toBeGreaterThan(0)
+  })
+
+  it('steps is unregistered: body re-parsed as children, no render data', () => {
+    const md = '@steps\nFirst step.\n@endsteps\n'
+    const tree = parseAndTransform(md)
+    const directives = findNodes(tree, 'directiveBlock')
+    expect(directives).toHaveLength(1)
+    expect(directives[0].name).toBe('steps')
+    expect(directives[0].data).toBeUndefined()
+    expect(directives[0].children.length).toBeGreaterThan(0)
   })
 })

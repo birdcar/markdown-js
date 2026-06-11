@@ -16,6 +16,8 @@ export type { TaskModifierNode } from './inlines/modifiers/index.js'
 export type { MentionNode } from './inlines/mentions/index.js'
 export type { DirectiveBlockNode } from './blocks/index.js'
 
+export type { RemarkBfmOptions, DirectiveDefinition, DirectiveContext } from './blocks/registry.js'
+
 export type { EmbedResolver } from './contracts/embed-resolver.js'
 export type { MentionResolver } from './contracts/mention-resolver.js'
 export type { ComputedFieldResolver } from './contracts/computed-field-resolver.js'
