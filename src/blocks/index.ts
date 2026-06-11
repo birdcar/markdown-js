@@ -12,6 +12,7 @@ import { genericDirectiveFromMarkdown } from './generic/from-markdown.js'
 // Container directives whose bodies get re-parsed as markdown
 const CONTAINER_DIRECTIVES = new Set([
   'callout', 'details', 'tabs', 'tab', 'figure', 'aside',
+  'click', 'steps',
 ])
 
 // Leaf directives whose bodies are NOT re-parsed

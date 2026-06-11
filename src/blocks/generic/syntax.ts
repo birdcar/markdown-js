@@ -4,6 +4,7 @@ import { markdownLineEnding, markdownSpace } from 'micromark-util-character'
 const DIRECTIVE_NAMES = new Set([
   'details', 'tabs', 'tab', 'figure', 'aside',
   'include', 'query', 'toc', 'math', 'endnotes',
+  'click', 'steps',
 ])
 
 function isLowerAlpha(code: number): boolean {
