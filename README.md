@@ -85,7 +85,7 @@ Available sub-plugins and utilities:
 | `@birdcar/markdown/modifiers` | `remarkBfmModifiers` | `//due:2025-03-01`, `//hard` |
 | `@birdcar/markdown/mentions` | `remarkBfmMentions` | `@username` inline references |
 | `@birdcar/markdown/hashtags` | `remarkBfmHashtags` | `#project` inline tags |
-| `@birdcar/markdown/directives` | `remarkBfmDirectives` | `@callout`/`@embed` + 9 new directive blocks |
+| `@birdcar/markdown/directives` | `remarkBfmDirectives` | Directive block parser with built-in and custom directives |
 | `@birdcar/markdown/footnotes` | `remarkBfmFootnotes` | `[^label]` references and definitions |
 | `@birdcar/markdown/metadata` | `extractMetadata` | Computed fields from parsed documents |
 | `@birdcar/markdown/merge` | `mergeDocuments` | Deep merge of front-matter + body |
@@ -358,6 +358,113 @@ E = mc^2
 @endendnotes
 ```
 
+### Custom Directives
+
+`remarkBfm` (and `remarkBfmDirectives`) accept an optional `directives` map that registers additional directive types — or overrides built-ins.
+
+```ts
+import { remarkBfm } from '@birdcar/markdown'
+import type { DirectiveDefinition } from '@birdcar/markdown'
+
+const deck: DirectiveDefinition = { kind: 'container' }
+const processor = unified()
+  .use(remarkParse)
+  .use(remarkGfm)
+  .use(remarkBfm, {
+    directives: {
+      deck: { kind: 'container' },
+      slide: { kind: 'container' },
+    },
+  })
+```
+
+#### `DirectiveDefinition`
+
+```ts
+interface DirectiveDefinition {
+  kind: 'container' | 'leaf'
+  toHast?: HastData | ((node: DirectiveBlockNode) => HastData)
+  transform?: (node: DirectiveBlockNode, ctx: DirectiveContext) => void
+}
+```
+
+- **`kind`** — required. `'container'` parses the body as full BFM markdown; `'leaf'` stores it as raw text in `node.meta.body`.
+- **`toHast`** — shorthand to attach `{ hName, hProperties, hChildren }` onto the node so `remark-rehype` renders it as a custom element. Accepts a static object or a function that receives the node.
+- **`transform`** — escape hatch for complex transformations (mutate `node` or `ctx.tree` directly). When present, `toHast` is ignored.
+
+#### `toHast` shorthand example
+
+```ts
+import { remarkBfm } from '@birdcar/markdown'
+
+unified()
+  .use(remarkParse)
+  .use(remarkGfm)
+  .use(remarkBfm, {
+    directives: {
+      badge: {
+        kind: 'leaf',
+        toHast: (node) => ({
+          hName: 'span',
+          hProperties: {
+            class: `badge badge--${String(node.params.type ?? 'default')}`,
+          },
+        }),
+      },
+    },
+  })
+```
+
+#### `transform` escape-hatch example
+
+```ts
+import type { DirectiveContext } from '@birdcar/markdown'
+import type { DirectiveBlockNode } from '@birdcar/markdown'
+
+unified()
+  .use(remarkParse)
+  .use(remarkGfm)
+  .use(remarkBfm, {
+    directives: {
+      warning: {
+        kind: 'container',
+        transform: (node: DirectiveBlockNode, _ctx: DirectiveContext) => {
+          node.data = {
+            hName: 'aside',
+            hProperties: { class: 'warning', role: 'note' },
+          }
+        },
+      },
+    },
+  })
+```
+
+#### Deck recipe (`@click` / `@steps`)
+
+`@click` and `@steps` are no longer built-in directives. Register them manually and render with your own transform or renderer:
+
+```ts
+import { remarkBfm } from '@birdcar/markdown'
+
+unified()
+  .use(remarkParse)
+  .use(remarkGfm)
+  .use(remarkBfm, {
+    directives: {
+      click: { kind: 'container' },
+      steps: { kind: 'container' },
+    },
+  })
+```
+
+With no `toHast` or `transform`, the nodes parse correctly and land in the MDAST as `directiveBlock` nodes — leaving rendering entirely to your own rehype plugin or serializer.
+
+#### Behavior notes
+
+- **Unregistered directive** — still parses; treated as `kind: 'container'` with no render data attached. The node is present in the MDAST.
+- **Close fence required** — a matching `@endname` fence is required. Without it the opening line falls back to a paragraph.
+- **Override built-ins** — a custom definition with the same name as a built-in takes precedence.
+
 ### Footnotes
 
 Pandoc-style footnote references and definitions:
@@ -401,6 +508,11 @@ import type {
   MergeOptions,       // { strategy, separator }
   MergeStrategy,      // 'last-wins' | 'first-wins' | 'error'
   MergeResolver,      // (key, existing, incoming) => value
+
+  // Directive registration
+  RemarkBfmOptions,    // { directives?: Record<string, DirectiveDefinition> }
+  DirectiveDefinition, // { kind, toHast?, transform? }
+  DirectiveContext,    // { tree: Root }
 
   // Contracts
   EmbedResolver,
