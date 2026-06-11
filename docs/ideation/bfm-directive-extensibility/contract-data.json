@@ -1,0 +1,100 @@
+{
+  "projectName": "BFM Directive Extensibility",
+  "slug": "bfm-directive-extensibility",
+  "date": "2026-06-10",
+  "status": "Draft",
+  "supersedes": null,
+  "confidence": {
+    "score": 91,
+    "dimensions": [
+      { "key": "scope", "score": 95, "label": "Scope", "reason": "In/out boundaries locked: markdown-js API + README/release docs + a drafted spec §11.3 note; deck migration is downstream with the recipe provided." },
+      { "key": "risk", "score": 80, "label": "Risk", "reason": "Full tokenizer unification (deleting the callout/embed tokenizers) is the main risk, mitigated by phasing, keeping every existing test green, and validating against the real deck consumer." },
+      { "key": "effort", "score": 86, "label": "Effort", "reason": "Well-scoped across ~6 source files plus the README; micromark state-machine edits are fiddly but bounded." },
+      { "key": "clarity", "score": 96, "label": "Clarity", "reason": "API shape is fully specified with consumer-facing examples and validated against deck's actual usage of directiveBlock nodes." },
+      { "key": "tests", "score": 90, "label": "Tests", "reason": "Existing directives/generic-directives suites and spec fixtures form a strong regression net; new per-phase tests are defined." }
+    ]
+  },
+  "problem": [
+    "The BFM spec defines directives as open-ended: §1.1 says any `[a-z][a-z0-9]*` name is syntactically a directive, §11.3 says implementations MAY add custom directive types, and Appendix A lists built-in names as 'non-exhaustive.' The current parser violates this. `src/blocks/generic/syntax.ts` hard-codes a `DIRECTIVE_NAMES` allowlist and returns `nok` for any name not in it, so `@mydirective…@endmydirective` is never tokenized as a directive — it silently degrades to a plain paragraph. There is no public API for third parties to register their own directives, even though every other extension surface in the package (computed fields, merge strategies) already accepts resolvers via an options object.",
+    "The closed model has already forced workarounds. `click`/`steps` were bolted into the core allowlist purely so the parser would recognize them — even though they are owned by a separate app (deck), are absent from the spec, and have no render behavior in markdown-js (deck renders them itself via React, reading the parsed directiveBlock nodes). A latent bug also lurks behind the allowlist: an unclosed directive consumes the rest of the document to EOF, harmless today only because so few names tokenize, but a footgun the moment the parser accepts any name."
+  ],
+  "goals": [
+    "Restore §1.1/§11.3 conformance: the parser tokenizes any well-formed `[a-z][a-z0-9]*` directive regardless of whether it is registered.",
+    "Add a first-class registration API on `remarkBfm(options)` so consumers add custom directives (container/leaf classification + render behavior) without forking, consistent with the existing `extractMetadata`/`mergeDocuments` options pattern.",
+    "Collapse the three competing tokenizers (callout, embed, generic) into one and turn every built-in into an ordinary registry entry.",
+    "Remove `click`/`steps` from markdown-js so deck registers them via the new API; verify all of deck's click/steps features remain expressible.",
+    "Document the registration API (README + release notes via a conventional-commit feat) and draft a `bfm-spec.md` §11.3 extension addition."
+  ],
+  "successCriteria": [
+    "Any well-formed `@x…@endx` with a valid name parses to a `directiveBlock` node even when `x` is unregistered: container default, body parsed as children, no render data.",
+    "An unclosed directive (`@x` with no matching `@endx`) falls back to a plain paragraph — no EOF-swallowing.",
+    "A consumer can register a custom directive through `remarkBfm(options)` using either the `toHast` shorthand or a `transform(node, ctx)` hook, and both produce correct output; the render hook is optional (registration may declare `kind` only).",
+    "All built-ins (callout, details, tabs/tab, figure, aside, include, query, toc, math, endnotes, embed) are registry entries; the bespoke callout and embed tokenizers are deleted; callout now emits a wrapper element it previously lacked.",
+    "`click`/`steps` are removed from markdown-js yet still parse as container directiveBlocks via the open parser; deck's full feature set (auto-index, `@click at=N`, `@steps` list-item indexing) remains achievable by registering `{ kind: 'container' }` and using deck's own transform/renderer.",
+    "Existing suites (`tests/directives.test.ts`, `tests/generic-directives.test.ts`, spec fixtures) stay green; new tests cover open-parser acceptance, unclosed fallback, unregistered directives, positional params, and custom registration.",
+    "README has a 'Custom Directives' section with the deck registration recipe; a `feat` commit body documents the API for release-please; `bfm-spec.md` §11.3 has a drafted extension note staged in the submodule."
+  ],
+  "scope": {
+    "mvp": [
+      { "item": "Open the generic tokenizer to any [a-z][a-z0-9]* name + require a matching close fence (unclosed → paragraph fallback)", "reason": "Restores §1.1 conformance and removes the EOF-swallow footgun — the non-negotiable core." },
+      { "item": "remarkBfm(options) directive registry: kind (container/leaf) + toHast shorthand + transform(node, ctx) escape hatch", "reason": "The extensibility API consumers asked for, with render optional." },
+      { "item": "Refactor the switch-based built-ins into registry entries; unregistered names default to container", "reason": "Makes built-ins ordinary entries; required by the registry model." }
+    ],
+    "full": [
+      { "item": "Unify callout & embed into the single tokenizer; delete their bespoke tokenizers; add positional-param parsing (fix the never-populated _positional); fix callout's missing render", "reason": "Eliminates duplication and a latent bug; one tokenizer for everything." },
+      { "item": "Remove click/steps built-ins and validate deck's full feature set is expressible via registration", "reason": "Spec-cleans the package; click/steps are owned by deck." },
+      { "item": "README 'Custom Directives' section + deck registration recipe + a release-please feat commit body", "reason": "User-requested documentation deliverable." },
+      { "item": "Draft a bfm-spec.md §11.3 extension addition, staged in the spec submodule", "reason": "Documents the reference extension mechanism for a separate spec-repo PR." }
+    ],
+    "stretch": [
+      { "item": "Proper unified Plugin<[RemarkBfmOptions?], Root> typing so deck can drop its `as unknown as` coercion" },
+      { "item": "A core-only mode that disables specific built-ins" }
+    ],
+    "outOfScope": [
+      { "item": "Rewriting deck's parse-deck.ts / remarkClick", "reason": "Separate repo the user owns; we provide the registration recipe instead." },
+      { "item": "Opening a PR against the spec repo", "reason": "The submodule is a separate repo; we only stage the draft addition." },
+      { "item": "A rehype/HTML renderer for custom directives beyond hName/hProperties data", "reason": "Rendering is the downstream pipeline's job; markdown-js only sets mdast data." }
+    ],
+    "future": [
+      "Custom inline directives (current scope is block directives only)",
+      "Per-directive serialization (toMarkdown) hooks for custom round-tripping",
+      "Promote click/steps into the spec if they generalize beyond deck"
+    ]
+  },
+  "execution": {
+    "strategy": "Sequential",
+    "phases": [
+      {
+        "title": "Open the parser (conformance + safety)",
+        "risk": "high",
+        "blocking": true,
+        "specPath": "docs/ideation/bfm-directive-extensibility/spec-phase-1.md",
+        "notes": "Generic tokenizer accepts any [a-z][a-z0-9]* name; require matching close fence so unclosed directives fall back to paragraphs; add positional-param parsing; remove the DIRECTIVE_NAMES allowlist."
+      },
+      {
+        "title": "Directive registry + render API",
+        "risk": "medium",
+        "blocking": true,
+        "prereqs": ["Open the parser (conformance + safety)"],
+        "specPath": "docs/ideation/bfm-directive-extensibility/spec-phase-2.md",
+        "notes": "Define RemarkBfmOptions + registry (kind, toHast shorthand, transform escape hatch); wire into remarkBfm(options); refactor switch-based built-ins into entries; unregistered → container default; custom defs merge over built-ins."
+      },
+      {
+        "title": "Unify callout & embed; remove click/steps",
+        "risk": "high",
+        "blocking": true,
+        "prereqs": ["Directive registry + render API"],
+        "specPath": "docs/ideation/bfm-directive-extensibility/spec-phase-3.md",
+        "notes": "Delete callout/embed bespoke tokenizers; register callout (fix render) and embed (positional URL, leaf body, round-trip) as entries; remove click/steps built-ins; confirm they still parse as container by default."
+      },
+      {
+        "title": "Docs + spec draft",
+        "risk": "low",
+        "blocking": false,
+        "prereqs": ["Unify callout & embed; remove click/steps"],
+        "specPath": "docs/ideation/bfm-directive-extensibility/spec-phase-4.md",
+        "notes": "README 'Custom Directives' section + deck registration recipe; draft bfm-spec.md §11.3 addition in the submodule; conventional-commit feat body for release-please changelog/notes."
+      }
+    ]
+  }
+}

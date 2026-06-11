@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BFM Directive Extensibility — Mission Brief</title>
+    <style>
+/* Mission Brief — Contract Design Tokens & Components
+   Radix-inspired color scales, navy-tinted shadows, system fonts.
+   Inlined into generated HTML by contract-gen.ts at runtime. */
+
+:root {
+  --purple-2: #f8f8ff; --purple-3: #f0f1fe; --purple-4: #e6e7ff;
+  --purple-7: #b8baf8; --purple-9: #6565ec; --purple-11: #5753c6;
+  --purple-12: #272962;
+  --purple-a3: rgba(0, 19, 231, 0.059); --purple-a4: rgba(1, 13, 255, 0.098);
+  --purple-a5: rgba(0, 9, 255, 0.141);
+  --gray-1: #fcfcfd; --gray-2: #f9f9fb; --gray-3: #f0f0f3;
+  --gray-4: #e7e8ec; --gray-7: #cdced6; --gray-8: #b9bbc6;
+  --gray-9: #8b8d98; --gray-10: #80838d; --gray-11: #60646c;
+  --gray-12: #2b333b;
+  --gray-a4: rgba(0, 12, 58, 0.094); --gray-a5: rgba(0, 6, 58, 0.122);
+  --gray-a6: rgba(0, 8, 55, 0.153); --gray-a7: rgba(0, 6, 53, 0.197);
+  --red-2: #fff7f8; --red-9: #e54666; --red-11: #ca244d;
+  --red-a5: rgba(255, 0, 32, 0.193);
+  --green-9: #29a383; --green-11: #208368;
+  --yellow-11: #a06e00;
+  --color-bg: #ffffff;
+  --shadow-color: 3, 2, 13;
+  --shadow-2: 0 2px 3px -1px rgba(var(--shadow-color), 0.05), 0 1px 2px 0 rgba(var(--shadow-color), 0.04);
+  --shadow-3: 0 3px 6px -1px rgba(var(--shadow-color), 0.06), 0 1px 2px 0 rgba(var(--shadow-color), 0.04);
+  --border-inset: inset 0 0 0 1px var(--gray-a5);
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', Menlo, Consolas, monospace;
+  --radius-3: 6px; --radius-4: 8px; --radius-5: 12px; --radius-full: 9999px;
+}
+
+/* ── Dark Mode ───────────────────────────────── */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #0c111c;
+    --gray-1: #0c111c; --gray-2: #111827; --gray-3: #192132;
+    --gray-4: #1f2937; --gray-7: #4b5563; --gray-8: #6b7280;
+    --gray-9: #9ca3af; --gray-10: #b6bcc6; --gray-11: #d1d5db;
+    --gray-12: #eef0f2;
+    --gray-a4: rgba(255,255,255,0.098); --gray-a5: rgba(255,255,255,0.133);
+    --gray-a6: rgba(255,255,255,0.173); --gray-a7: rgba(255,255,255,0.224);
+    --purple-2: #1a1a3a; --purple-3: #222252;
+    --purple-4: #2a2a5a; --purple-7: #7878d0;
+    --purple-11: #b0b1ff; --purple-12: #dcdefd;
+    --purple-a3: rgba(101,101,236,0.15); --purple-a4: rgba(101,101,236,0.2);
+    --purple-a5: rgba(101,101,236,0.3);
+    --red-2: #2a1418; --red-a5: rgba(229,70,102,0.3);
+    --shadow-color: 0, 0, 0;
+  }
+}
+
+/* ── Reset ───────────────────────────────────── */
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--font-sans); font-size: 16px; line-height: 1.6;
+  color: var(--gray-12); background: var(--color-bg);
+  max-width: 1040px; margin: 0 auto; padding: 40px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Hero ─────────────────────────────────────── */
+
+.hero {
+  background: var(--gray-12); color: var(--gray-1);
+  padding: 40px; border-radius: var(--radius-5);
+  position: relative; overflow: hidden;
+}
+.hero-grid {
+  position: absolute; inset: 0;
+  background-image: linear-gradient(var(--purple-a3) 1px, transparent 1px),
+                    linear-gradient(90deg, var(--purple-a3) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: linear-gradient(180deg, rgba(0,0,0,0.6), transparent 80%);
+  pointer-events: none;
+}
+.hero-content { position: relative; }
+.hero-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 32px; }
+.hero-slug { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.slug-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--purple-9); }
+.hero-slug span:last-child { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gray-8); font-weight: 500; }
+.hero-title { margin: 0; font-size: 56px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; color: var(--gray-1); }
+.hero-meta { text-align: right; font-size: 12px; color: var(--gray-8); font-family: var(--font-mono); line-height: 1.7; }
+.hero-status { color: var(--purple-9); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+.hero-supersedes { color: var(--gray-9); }
+.hero-score-row { display: grid; grid-template-columns: 320px 1fr; gap: 36px; align-items: center; }
+.kicker { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gray-8); margin-bottom: 6px; font-weight: 600; }
+.kicker-accent { color: var(--purple-11); }
+.kicker-danger { color: var(--red-11); }
+.kicker-muted { color: var(--gray-10); }
+.score-display { display: flex; align-items: baseline; gap: 8px; }
+.score-num { font-size: 168px; font-weight: 700; letter-spacing: -0.06em; line-height: 0.85; font-variant-numeric: tabular-nums; }
+.score-denom { font-size: 32px; color: var(--gray-9); font-weight: 500; }
+.score-bar-track { margin-top: 8px; height: 6px; background: rgba(255,255,255,0.12); border-radius: var(--radius-full); overflow: hidden; max-width: 280px; }
+.score-bar-fill { height: 100%; border-radius: var(--radius-full); transition: width 1100ms cubic-bezier(.2,.7,.3,1); }
+.dim-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 32px; }
+.dim-row { display: flex; align-items: baseline; gap: 10px; }
+.dim-score { font-family: var(--font-mono); font-size: 18px; font-weight: 600; min-width: 32px; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.dim-detail { flex: 1; min-width: 0; }
+.dim-label { font-size: 13px; font-weight: 600; color: var(--gray-1); text-transform: lowercase; margin-bottom: 2px; }
+.dim-reason { font-size: 11.5px; color: var(--gray-9); line-height: 1.45; }
+
+/* ── First Move ───────────────────────────────── */
+
+.first-move {
+  margin-top: 24px; padding: 26px 32px; border-radius: var(--radius-5);
+  background: var(--purple-2); box-shadow: inset 0 0 0 1px var(--purple-a5), var(--shadow-2);
+}
+.first-move-grid { display: grid; grid-template-columns: 200px 1fr; gap: 32px; align-items: center; }
+.first-move-headline { font-size: 32px; font-weight: 700; color: var(--gray-12); letter-spacing: -0.025em; line-height: 1; margin-bottom: 8px; }
+.first-move-phase { font-size: 13px; color: var(--gray-11); line-height: 1.5; }
+.first-move-phase strong { color: var(--gray-12); }
+
+/* ── Copy Command ─────────────────────────────── */
+
+.copy-cmd {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; background: var(--purple-12); color: var(--purple-2);
+  border-radius: var(--radius-3); font-family: var(--font-mono); font-size: 13px; line-height: 1.4;
+}
+.copy-cmd-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; user-select: all; }
+.copy-btn {
+  flex: 0 0 auto; background: var(--gray-a4); color: var(--gray-11);
+  border: 0; padding: 4px 8px; border-radius: 4px;
+  font-size: 11px; font-family: var(--font-sans); cursor: pointer;
+  letter-spacing: 0.05em; text-transform: uppercase;
+}
+.copy-btn:hover { background: var(--gray-a6); }
+.copy-btn-accent { background: var(--purple-9); color: white; font-weight: 600; padding: 5px 10px; }
+.copy-btn-accent:hover { background: var(--purple-11); }
+
+/* ── Sections ─────────────────────────────────── */
+
+.section-block { margin-top: 56px; }
+.section-hdr { margin-bottom: 24px; }
+.section-title { margin: 0; font-size: 32px; font-weight: 700; letter-spacing: -0.022em; line-height: 1.05; color: var(--gray-12); }
+.section-title-row { display: flex; align-items: baseline; gap: 16px; }
+.section-count { font-family: var(--font-mono); font-size: 11px; color: var(--gray-10); letter-spacing: 0.06em; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 56px; }
+.stack-14 { display: flex; flex-direction: column; gap: 14px; }
+.body-text { margin: 0; font-size: 15.5px; line-height: 1.65; color: var(--gray-12); }
+.line-num { font-family: var(--font-mono); font-size: 10.5px; color: var(--gray-10); margin-right: 8px; letter-spacing: 0.08em; vertical-align: top; }
+
+/* ── Goals ─────────────────────────────────────── */
+
+.goal-card {
+  padding: 12px 14px; background: var(--purple-2); border-radius: var(--radius-3);
+  box-shadow: inset 0 0 0 1px var(--purple-a4);
+  display: grid; grid-template-columns: 24px 1fr; gap: 12px; align-items: baseline;
+}
+.goal-num { font-size: 22px; font-weight: 700; color: var(--purple-11); letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+.goal-text { font-size: 14.5px; line-height: 1.55; color: var(--gray-12); }
+
+/* ── Success Criteria ──────────────────────────── */
+
+.criteria-grid { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 14px 28px; }
+.criteria-item {
+  display: grid; grid-template-columns: 24px 1fr; gap: 12px; align-items: baseline;
+  font-size: 14px; line-height: 1.55; padding: 10px 14px 10px 0;
+  border-bottom: 1px solid var(--gray-a4);
+}
+
+/* ── Scope ─────────────────────────────────────── */
+
+.scope-layout { display: grid; grid-template-columns: 300px 1fr; gap: 36px; }
+.nested-tiers { position: relative; width: 300px; height: 300px; padding-top: 6px; }
+.tier-box {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  border-radius: var(--radius-4); display: flex; flex-direction: column; justify-content: flex-end; padding: 10px;
+}
+.tier-stretch { width: 300px; height: 300px; border: 1.5px solid var(--gray-7); }
+.tier-full { width: 220px; height: 220px; border: 1.5px solid var(--purple-7); }
+.tier-mvp { width: 140px; height: 140px; background: var(--purple-9); border: 1.5px solid var(--purple-9); }
+.tier-box-label {
+  position: absolute; top: 8px; left: 12px;
+  font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.12em;
+  text-transform: uppercase; font-weight: 600;
+}
+.tier-stretch .tier-box-label { color: var(--gray-7); }
+.tier-full .tier-box-label { color: var(--purple-7); }
+.tier-mvp .tier-box-label { color: white; }
+.tier-box-count { opacity: 0.7; }
+.tier-lists { display: flex; flex-direction: column; gap: 22px; }
+.tier-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.tier-dot { width: 10px; height: 10px; border-radius: 2px; }
+.tier-solid { background: var(--purple-9); }
+.tier-soft { background: var(--purple-7); }
+.tier-ghost { background: var(--gray-7); }
+.tier-title { font-size: 13px; font-weight: 600; color: var(--gray-12); letter-spacing: -0.005em; }
+.tier-rule { flex: 1; height: 1px; background: var(--gray-a4); }
+.tier-count { font-family: var(--font-mono); font-size: 10.5px; color: var(--gray-10); }
+.tier-items { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.tier-items li { font-size: 13.5px; line-height: 1.5; color: var(--gray-12); }
+.tier-items strong { font-weight: 500; }
+.tier-reason { color: var(--gray-10); margin-left: 6px; font-size: 12.5px; }
+.scope-extras { margin-top: 28px; }
+.scope-out-panel { padding: 18px; border-radius: var(--radius-4); background: var(--red-2); box-shadow: inset 0 0 0 1px var(--red-a5); }
+.scope-out-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.scope-out-list li { font-size: 13px; line-height: 1.5; }
+.scope-out-item { color: var(--gray-12); font-weight: 500; text-decoration: line-through; text-decoration-color: var(--red-9); }
+.scope-out-reason { color: var(--gray-11); }
+.scope-future-panel { padding: 18px; border-radius: var(--radius-4); background: var(--gray-2); box-shadow: inset 0 0 0 1px var(--gray-a4); }
+.scope-future-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.scope-future-list li { font-size: 13px; line-height: 1.5; color: var(--gray-11); }
+
+/* ── Execution ─────────────────────────────────── */
+
+.phase-track { display: grid; gap: 8px; }
+.phase-card {
+  position: relative; padding: 14px 12px;
+  background: var(--color-bg); border-radius: var(--radius-4);
+  box-shadow: var(--border-inset), var(--shadow-2);
+  border-top: 3px solid var(--green-11);
+  min-height: 200px; display: flex; flex-direction: column; gap: 10px;
+}
+.phase-gate { background: var(--purple-2); }
+.phase-arrow {
+  position: absolute; right: -10px; top: 50%;
+  width: 14px; height: 14px;
+  border-top: 1.5px solid var(--gray-a7); border-right: 1.5px solid var(--gray-a7);
+  transform: translateY(-50%) rotate(45deg); z-index: 2;
+}
+.phase-head { display: flex; align-items: center; gap: 6px; }
+.phase-num { font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--gray-10); letter-spacing: 0.08em; }
+.phase-risk { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; margin-left: auto; }
+.phase-title { font-size: 13.5px; font-weight: 700; letter-spacing: -0.005em; color: var(--gray-12); line-height: 1.25; }
+.phase-kind { font-family: var(--font-mono); font-size: 10px; color: var(--gray-10); letter-spacing: 0.06em; text-transform: uppercase; }
+.phase-notes { font-size: 11.5px; color: var(--gray-11); line-height: 1.45; font-style: italic; margin-top: auto; }
+.autopilot-bar {
+  margin-top: 28px; padding: 20px 24px; border-radius: var(--radius-4);
+  background: var(--purple-2); box-shadow: inset 0 0 0 1px var(--purple-a5), var(--shadow-2);
+  display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: center;
+}
+.autopilot-desc { font-size: 13px; color: var(--gray-11); line-height: 1.5; margin-top: 4px; }
+.copy-cmd-accent { background: var(--purple-12); }
+.cmd-list-header { margin-top: 20px; margin-bottom: 4px; }
+.cmd-list { margin-top: 10px; display: flex; flex-direction: column; gap: 14px; }
+.cmd-row { display: grid; grid-template-columns: 40px 200px 1fr; gap: 14px; align-items: center; }
+.cmd-num { font-family: var(--font-mono); font-size: 12px; color: var(--gray-10); letter-spacing: 0.06em; font-weight: 600; }
+.cmd-title { font-size: 13.5px; font-weight: 600; color: var(--gray-12); }
+.cmd-row .copy-cmd { background: var(--gray-12); color: var(--gray-1); }
+
+/* ── Agent Team Details ──────────────────────── */
+
+.agent-team-details { margin-top: 24px; border: 1px solid var(--gray-a5); border-radius: var(--radius-4); overflow: hidden; }
+.agent-team-details summary {
+  list-style: none; cursor: pointer; padding: 12px 16px;
+  background: var(--gray-2); font-weight: 500; font-size: 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+.agent-team-details summary::-webkit-details-marker { display: none; }
+.agent-team-details summary::before { content: '▸'; color: var(--gray-10); transition: transform 0.15s ease; }
+.agent-team-details[open] summary::before { transform: rotate(90deg); }
+.agent-team-body { padding: 16px; border-top: 1px solid var(--gray-a5); }
+.copy-cmd-wide { white-space: pre-wrap; }
+.copy-cmd-wide .copy-cmd-text { white-space: pre-wrap; }
+
+/* ── Responsive ────────────────────────────────── */
+
+@media (max-width: 768px) {
+  body { padding: 16px; }
+  .hero { padding: 24px; }
+  .hero-title { font-size: 36px; }
+  .hero-top { flex-direction: column; gap: 16px; }
+  .hero-meta { text-align: left; }
+  .hero-score-row { grid-template-columns: 1fr; }
+  .score-num { font-size: 96px; }
+  .two-col, .scope-layout, .scope-extras { grid-template-columns: 1fr; }
+  .first-move-grid { grid-template-columns: 1fr; }
+  .criteria-grid { grid-template-columns: 1fr; }
+  .dim-grid { grid-template-columns: 1fr; }
+  .phase-track { grid-template-columns: 1fr !important; }
+  .phase-arrow { display: none; }
+  .cmd-row { grid-template-columns: 40px 1fr; }
+  .cmd-row .copy-cmd { grid-column: 1 / -1; }
+  .nested-tiers { display: none; }
+}
+
+/* ── Print ──────────────────────────────────────── */
+
+@media print {
+  body { font-size: 11pt; max-width: none; color: #000; background: #fff; padding: 20px; }
+  .hero { background: #222; color: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .copy-btn { display: none !important; }
+  .phase-track { grid-template-columns: repeat(3, 1fr) !important; }
+  .agent-team-details[open] > *:not(summary) { display: block; }
+}
+
+    </style>
+  </head>
+  <body>
+
+    <header class="hero">
+      <div class="hero-grid" aria-hidden="true"></div>
+      <div class="hero-content">
+        <div class="hero-top">
+          <div>
+            <div class="hero-slug">
+              <span class="slug-dot"></span>
+              <span>Mission brief · bfm-directive-extensibility</span>
+            </div>
+            <h1 class="hero-title">BFM Directive Extensibility</h1>
+          </div>
+          <div class="hero-meta">
+            <div class="hero-status">Draft</div>
+            <div>2026-06-10</div>
+            
+          </div>
+        </div>
+
+        <div class="hero-score-row">
+          <div class="hero-score-block">
+            <div class="kicker">Plan confidence</div>
+            <div class="score-display">
+              <span class="score-num" style="color: var(--green-9)">91</span>
+              <span class="score-denom">/100</span>
+            </div>
+            <div class="score-bar-track">
+              <div class="score-bar-fill" style="width: 91%; background: var(--green-9)"></div>
+            </div>
+          </div>
+          <div class="hero-dims">
+            <div class="kicker">By dimension</div>
+            <div class="dim-grid">
+              <div class="dim-row">
+                <span class="dim-score" style="color: var(--green-9)">95</span>
+                <div class="dim-detail">
+                  <div class="dim-label">scope</div>
+                  <div class="dim-reason">In/out boundaries locked: markdown-js API + README/release docs + a drafted spec §11.3 note; deck migration is downstream with the recipe provided.</div>
+                </div>
+              </div>
+              <div class="dim-row">
+                <span class="dim-score" style="color: var(--green-9)">80</span>
+                <div class="dim-detail">
+                  <div class="dim-label">risk</div>
+                  <div class="dim-reason">Full tokenizer unification (deleting the callout/embed tokenizers) is the main risk, mitigated by phasing, keeping every existing test green, and validating against the real deck consumer.</div>
+                </div>
+              </div>
+              <div class="dim-row">
+                <span class="dim-score" style="color: var(--green-9)">86</span>
+                <div class="dim-detail">
+                  <div class="dim-label">effort</div>
+                  <div class="dim-reason">Well-scoped across ~6 source files plus the README; micromark state-machine edits are fiddly but bounded.</div>
+                </div>
+              </div>
+              <div class="dim-row">
+                <span class="dim-score" style="color: var(--green-9)">96</span>
+                <div class="dim-detail">
+                  <div class="dim-label">clarity</div>
+                  <div class="dim-reason">API shape is fully specified with consumer-facing examples and validated against deck's actual usage of directiveBlock nodes.</div>
+                </div>
+              </div>
+              <div class="dim-row">
+                <span class="dim-score" style="color: var(--green-9)">90</span>
+                <div class="dim-detail">
+                  <div class="dim-label">tests</div>
+                  <div class="dim-reason">Existing directives/generic-directives suites and spec fixtures form a strong regression net; new per-phase tests are defined.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section class="first-move">
+      <div class="first-move-grid">
+        <div>
+          <div class="kicker kicker-accent">First move</div>
+          <div class="first-move-headline">Run this.</div>
+          <div class="first-move-phase">Phase 01 — <strong>Open the parser (conformance + safety)</strong></div>
+        </div>
+        <div class="copy-cmd">
+          <span class="copy-cmd-text" id="cmd-first">/ideation:execute-spec docs/ideation/bfm-directive-extensibility/spec-phase-1.md</span>
+          <button type="button" class="copy-btn copy-btn-accent" data-copy="cmd-first">copy</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="two-col">
+      <section>
+        <div class="section-hdr">
+          <div class="kicker">Context · 01</div>
+          <h2 class="section-title">The problem</h2>
+        </div>
+        <div class="stack-14">
+          <p class="body-text"><span class="line-num">01</span>The BFM spec defines directives as open-ended: §1.1 says any `[a-z][a-z0-9]*` name is syntactically a directive, §11.3 says implementations MAY add custom directive types, and Appendix A lists built-in names as 'non-exhaustive.' The current parser violates this. `src/blocks/generic/syntax.ts` hard-codes a `DIRECTIVE_NAMES` allowlist and returns `nok` for any name not in it, so `@mydirective…@endmydirective` is never tokenized as a directive — it silently degrades to a plain paragraph. There is no public API for third parties to register their own directives, even though every other extension surface in the package (computed fields, merge strategies) already accepts resolvers via an options object.</p>
+          <p class="body-text"><span class="line-num">02</span>The closed model has already forced workarounds. `click`/`steps` were bolted into the core allowlist purely so the parser would recognize them — even though they are owned by a separate app (deck), are absent from the spec, and have no render behavior in markdown-js (deck renders them itself via React, reading the parsed directiveBlock nodes). A latent bug also lurks behind the allowlist: an unclosed directive consumes the rest of the document to EOF, harmless today only because so few names tokenize, but a footgun the moment the parser accepts any name.</p>
+        </div>
+      </section>
+      <section>
+        <div class="section-hdr">
+          <div class="kicker">Commit · 02</div>
+          <h2 class="section-title">Goals</h2>
+        </div>
+        <div class="stack-14">
+          <div class="goal-card">
+            <span class="goal-num">1</span>
+            <span class="goal-text">Restore §1.1/§11.3 conformance: the parser tokenizes any well-formed `[a-z][a-z0-9]*` directive regardless of whether it is registered.</span>
+          </div>
+          <div class="goal-card">
+            <span class="goal-num">2</span>
+            <span class="goal-text">Add a first-class registration API on `remarkBfm(options)` so consumers add custom directives (container/leaf classification + render behavior) without forking, consistent with the existing `extractMetadata`/`mergeDocuments` options pattern.</span>
+          </div>
+          <div class="goal-card">
+            <span class="goal-num">3</span>
+            <span class="goal-text">Collapse the three competing tokenizers (callout, embed, generic) into one and turn every built-in into an ordinary registry entry.</span>
+          </div>
+          <div class="goal-card">
+            <span class="goal-num">4</span>
+            <span class="goal-text">Remove `click`/`steps` from markdown-js so deck registers them via the new API; verify all of deck's click/steps features remain expressible.</span>
+          </div>
+          <div class="goal-card">
+            <span class="goal-num">5</span>
+            <span class="goal-text">Document the registration API (README + release notes via a conventional-commit feat) and draft a `bfm-spec.md` §11.3 extension addition.</span>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section class="section-block">
+      <div class="section-hdr">
+        <div class="kicker">Signal · 03</div>
+        <div class="section-title-row">
+          <h2 class="section-title">Done when…</h2>
+          <span class="section-count">7 signals</span>
+        </div>
+      </div>
+      <ul class="criteria-grid">
+        <li class="criteria-item">
+          <span class="line-num">01</span>
+          <span>Any well-formed `@x…@endx` with a valid name parses to a `directiveBlock` node even when `x` is unregistered: container default, body parsed as children, no render data.</span>
+        </li>
+        <li class="criteria-item">
+          <span class="line-num">02</span>
+          <span>An unclosed directive (`@x` with no matching `@endx`) falls back to a plain paragraph — no EOF-swallowing.</span>
+        </li>
+        <li class="criteria-item">
+          <span class="line-num">03</span>
+          <span>A consumer can register a custom directive through `remarkBfm(options)` using either the `toHast` shorthand or a `transform(node, ctx)` hook, and both produce correct output; the render hook is optional (registration may declare `kind` only).</span>
+        </li>
+        <li class="criteria-item">
+          <span class="line-num">04</span>
+          <span>All built-ins (callout, details, tabs/tab, figure, aside, include, query, toc, math, endnotes, embed) are registry entries; the bespoke callout and embed tokenizers are deleted; callout now emits a wrapper element it previously lacked.</span>
+        </li>
+        <li class="criteria-item">
+          <span class="line-num">05</span>
+          <span>`click`/`steps` are removed from markdown-js yet still parse as container directiveBlocks via the open parser; deck's full feature set (auto-index, `@click at=N`, `@steps` list-item indexing) remains achievable by registering `{ kind: 'container' }` and using deck's own transform/renderer.</span>
+        </li>
+        <li class="criteria-item">
+          <span class="line-num">06</span>
+          <span>Existing suites (`tests/directives.test.ts`, `tests/generic-directives.test.ts`, spec fixtures) stay green; new tests cover open-parser acceptance, unclosed fallback, unregistered directives, positional params, and custom registration.</span>
+        </li>
+        <li class="criteria-item">
+          <span class="line-num">07</span>
+          <span>README has a 'Custom Directives' section with the deck registration recipe; a `feat` commit body documents the API for release-please; `bfm-spec.md` §11.3 has a drafted extension note staged in the submodule.</span>
+        </li>
+      </ul>
+    </section>
+
+    <section class="section-block">
+      <div class="section-hdr">
+        <div class="kicker">Boundary · 04</div>
+        <div class="section-title-row">
+          <h2 class="section-title">Scope</h2>
+          <span class="section-count">MVP nests inside Full nests inside Stretch</span>
+        </div>
+      </div>
+
+      <div class="scope-layout">
+        <div class="nested-tiers">
+          <div class="tier-box tier-stretch"><span class="tier-box-label">Stretch <span class="tier-box-count">×2</span></span></div>
+          <div class="tier-box tier-full"><span class="tier-box-label">Full <span class="tier-box-count">×4</span></span></div>
+          <div class="tier-box tier-mvp"><span class="tier-box-label">MVP <span class="tier-box-count">×3</span></span></div>
+        </div>
+        <div class="tier-lists">
+
+          <div class="tier-group">
+            <div class="tier-header">
+              <span class="tier-dot tier-solid"></span>
+              <span class="tier-title">MVP — must ship</span>
+              <span class="tier-rule"></span>
+              <span class="tier-count">×3</span>
+            </div>
+            <ul class="tier-items">
+              <li><strong>Open the generic tokenizer to any [a-z][a-z0-9]* name + require a matching close fence (unclosed → paragraph fallback)</strong><span class="tier-reason">— Restores §1.1 conformance and removes the EOF-swallow footgun — the non-negotiable core.</span></li>
+              <li><strong>remarkBfm(options) directive registry: kind (container/leaf) + toHast shorthand + transform(node, ctx) escape hatch</strong><span class="tier-reason">— The extensibility API consumers asked for, with render optional.</span></li>
+              <li><strong>Refactor the switch-based built-ins into registry entries; unregistered names default to container</strong><span class="tier-reason">— Makes built-ins ordinary entries; required by the registry model.</span></li>
+            </ul>
+          </div>
+
+          <div class="tier-group">
+            <div class="tier-header">
+              <span class="tier-dot tier-soft"></span>
+              <span class="tier-title">Full — target outcome</span>
+              <span class="tier-rule"></span>
+              <span class="tier-count">×4</span>
+            </div>
+            <ul class="tier-items">
+              <li><strong>Unify callout &amp; embed into the single tokenizer; delete their bespoke tokenizers; add positional-param parsing (fix the never-populated _positional); fix callout's missing render</strong><span class="tier-reason">— Eliminates duplication and a latent bug; one tokenizer for everything.</span></li>
+              <li><strong>Remove click/steps built-ins and validate deck's full feature set is expressible via registration</strong><span class="tier-reason">— Spec-cleans the package; click/steps are owned by deck.</span></li>
+              <li><strong>README 'Custom Directives' section + deck registration recipe + a release-please feat commit body</strong><span class="tier-reason">— User-requested documentation deliverable.</span></li>
+              <li><strong>Draft a bfm-spec.md §11.3 extension addition, staged in the spec submodule</strong><span class="tier-reason">— Documents the reference extension mechanism for a separate spec-repo PR.</span></li>
+            </ul>
+          </div>
+
+          <div class="tier-group">
+            <div class="tier-header">
+              <span class="tier-dot tier-ghost"></span>
+              <span class="tier-title">Stretch — if time permits</span>
+              <span class="tier-rule"></span>
+              <span class="tier-count">×2</span>
+            </div>
+            <ul class="tier-items">
+              <li><strong>Proper unified Plugin&lt;[RemarkBfmOptions?], Root&gt; typing so deck can drop its `as unknown as` coercion</strong></li>
+              <li><strong>A core-only mode that disables specific built-ins</strong></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="two-col scope-extras">
+        <div class="scope-out-panel">
+          <div class="kicker kicker-danger">Out of scope — said no on purpose</div>
+          <ul class="scope-out-list">
+            <li><span class="scope-out-item">Rewriting deck's parse-deck.ts / remarkClick</span> <span class="scope-out-reason">— Separate repo the user owns; we provide the registration recipe instead.</span></li>
+            <li><span class="scope-out-item">Opening a PR against the spec repo</span> <span class="scope-out-reason">— The submodule is a separate repo; we only stage the draft addition.</span></li>
+            <li><span class="scope-out-item">A rehype/HTML renderer for custom directives beyond hName/hProperties data</span> <span class="scope-out-reason">— Rendering is the downstream pipeline's job; markdown-js only sets mdast data.</span></li>
+          </ul>
+        </div>
+        <div class="scope-future-panel">
+          <div class="kicker kicker-muted">Future — someday, maybe</div>
+          <ul class="scope-future-list">
+            <li>Custom inline directives (current scope is block directives only)</li>
+            <li>Per-directive serialization (toMarkdown) hooks for custom round-tripping</li>
+            <li>Promote click/steps into the spec if they generalize beyond deck</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-block">
+      <div class="section-hdr">
+        <div class="kicker">Run · 05</div>
+        <div class="section-title-row">
+          <h2 class="section-title">Execution</h2>
+          <span class="section-count">Sequential</span>
+        </div>
+      </div>
+
+      <div class="phase-track" style="grid-template-columns: repeat(4, 1fr)">
+        <div class="phase-card" style="border-top-color: var(--red-9)">
+          <div class="phase-arrow" aria-hidden="true"></div>
+          <div class="phase-head">
+            <span class="phase-num">01</span>
+            <span class="phase-risk" style="color: var(--red-9)">high</span>
+          </div>
+          <div class="phase-title">Open the parser (conformance + safety)</div>
+          <div class="phase-kind">phase · blocking</div>
+          <div class="phase-notes">Generic tokenizer accepts any [a-z][a-z0-9]* name; require matching close fence so unclosed directives fall back to paragraphs; add positional-param parsing; remove the DIRECTIVE_NAMES allowlist.</div>
+        </div>
+        <div class="phase-card" style="border-top-color: var(--yellow-11)">
+          <div class="phase-arrow" aria-hidden="true"></div>
+          <div class="phase-head">
+            <span class="phase-num">02</span>
+            <span class="phase-risk" style="color: var(--yellow-11)">med</span>
+          </div>
+          <div class="phase-title">Directive registry + render API</div>
+          <div class="phase-kind">phase · blocking</div>
+          <div class="phase-notes">Define RemarkBfmOptions + registry (kind, toHast shorthand, transform escape hatch); wire into remarkBfm(options); refactor switch-based built-ins into entries; unregistered → container default; custom defs merge over built-ins.</div>
+        </div>
+        <div class="phase-card" style="border-top-color: var(--red-9)">
+          <div class="phase-arrow" aria-hidden="true"></div>
+          <div class="phase-head">
+            <span class="phase-num">03</span>
+            <span class="phase-risk" style="color: var(--red-9)">high</span>
+          </div>
+          <div class="phase-title">Unify callout &amp; embed; remove click/steps</div>
+          <div class="phase-kind">phase · blocking</div>
+          <div class="phase-notes">Delete callout/embed bespoke tokenizers; register callout (fix render) and embed (positional URL, leaf body, round-trip) as entries; remove click/steps built-ins; confirm they still parse as container by default.</div>
+        </div>
+        <div class="phase-card" style="border-top-color: var(--green-11)">
+          
+          <div class="phase-head">
+            <span class="phase-num">04</span>
+            <span class="phase-risk" style="color: var(--green-11)">low</span>
+          </div>
+          <div class="phase-title">Docs + spec draft</div>
+          <div class="phase-kind">phase</div>
+          <div class="phase-notes">README 'Custom Directives' section + deck registration recipe; draft bfm-spec.md §11.3 addition in the submodule; conventional-commit feat body for release-please changelog/notes.</div>
+        </div>
+      </div>
+
+      <div class="autopilot-bar">
+        <div class="autopilot-left">
+          <div class="kicker kicker-accent">Run all phases</div>
+          <div class="autopilot-desc">Autopilot reads the contract, walks the dependency graph, and dispatches phases automatically.</div>
+        </div>
+        <div class="copy-cmd copy-cmd-accent">
+          <span class="copy-cmd-text" id="cmd-autopilot">/ideation:autopilot</span>
+          <button type="button" class="copy-btn copy-btn-accent" data-copy="cmd-autopilot">copy</button>
+        </div>
+      </div>
+
+      <div class="cmd-list-header kicker">Or run individual phases</div>
+      <div class="cmd-list">
+        <div class="cmd-row">
+          <span class="cmd-num">01</span>
+          <span class="cmd-title">Open the parser (conformance + safety)</span>
+          <div class="copy-cmd">
+            <span class="copy-cmd-text" id="cmd-1">/ideation:execute-spec docs/ideation/bfm-directive-extensibility/spec-phase-1.md</span>
+            <button type="button" class="copy-btn" data-copy="cmd-1">copy</button>
+          </div>
+        </div>
+        <div class="cmd-row">
+          <span class="cmd-num">02</span>
+          <span class="cmd-title">Directive registry + render API</span>
+          <div class="copy-cmd">
+            <span class="copy-cmd-text" id="cmd-2">/ideation:execute-spec docs/ideation/bfm-directive-extensibility/spec-phase-2.md</span>
+            <button type="button" class="copy-btn" data-copy="cmd-2">copy</button>
+          </div>
+        </div>
+        <div class="cmd-row">
+          <span class="cmd-num">03</span>
+          <span class="cmd-title">Unify callout &amp; embed; remove click/steps</span>
+          <div class="copy-cmd">
+            <span class="copy-cmd-text" id="cmd-3">/ideation:execute-spec docs/ideation/bfm-directive-extensibility/spec-phase-3.md</span>
+            <button type="button" class="copy-btn" data-copy="cmd-3">copy</button>
+          </div>
+        </div>
+        <div class="cmd-row">
+          <span class="cmd-num">04</span>
+          <span class="cmd-title">Docs + spec draft</span>
+          <div class="copy-cmd">
+            <span class="copy-cmd-text" id="cmd-4">/ideation:execute-spec docs/ideation/bfm-directive-extensibility/spec-phase-4.md</span>
+            <button type="button" class="copy-btn" data-copy="cmd-4">copy</button>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <script>
+      document.querySelectorAll('.copy-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const target = document.getElementById(btn.dataset.copy);
+          if (!target) return;
+          navigator.clipboard.writeText(target.textContent.trim()).then(() => {
+            btn.textContent = 'copied';
+            setTimeout(() => (btn.textContent = 'copy'), 1500);
+          });
+        });
+      });
+    </script>
+  </body>
+</html>
