@@ -433,11 +433,12 @@ describe('endnotes directive', () => {
 })
 
 describe('generic directive edge cases', () => {
-  it('does not match unknown directive names', () => {
+  it('parses arbitrary directive names', () => {
     const md = '@foobar\nContent.\n@endfoobar\n'
     const tree = parseAndTransform(md)
     const directives = findNodes(tree, 'directiveBlock')
-    expect(directives).toHaveLength(0)
+    expect(directives).toHaveLength(1)
+    expect(directives[0].name).toBe('foobar')
   })
 
   it('does not interfere with callout', () => {

@@ -29,7 +29,7 @@ export function remarkBfmDirectives(this: Processor<Root>) {
   // Callout and embed have their own tokenizers; generic handles the 9 new directives.
   // Order matters: callout/embed registered first get priority at code 64.
   micromarkExtensions.push(
-    combineExtensions([calloutSyntax(), embedSyntax(), genericDirectiveSyntax()]),
+    combineExtensions([genericDirectiveSyntax(), calloutSyntax(), embedSyntax()]),
   )
   // Generic from-markdown handles ALL directiveBlock tokens (including callout)
   // by reading the name from the directiveBlockName token.

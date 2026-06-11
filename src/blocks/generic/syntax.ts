@@ -1,14 +1,12 @@
 import type { Extension, Tokenizer, State, Construct } from 'micromark-util-types'
 import { markdownLineEnding, markdownSpace } from 'micromark-util-character'
 
-const DIRECTIVE_NAMES = new Set([
-  'details', 'tabs', 'tab', 'figure', 'aside',
-  'include', 'query', 'toc', 'math', 'endnotes',
-  'click', 'steps',
-])
-
-function isLowerAlpha(code: number): boolean {
+function isNameStart(code: number): boolean {
   return code >= 97 && code <= 122
+}
+
+function isNameCont(code: number): boolean {
+  return (code >= 97 && code <= 122) || (code >= 48 && code <= 57)
 }
 
 const nonLazyContinuation: Construct = {
@@ -37,7 +35,7 @@ function tokenizeGenericDirective(this: any, effects: any, ok: any, nok: any) {
   }
 
   function bufferName(code: number | null): State | undefined {
-    if (code !== null && isLowerAlpha(code)) {
+    if (code !== null && (nameBuffer.length === 0 ? isNameStart(code) : isNameCont(code))) {
       nameBuffer += String.fromCharCode(code)
       effects.consume(code)
       return bufferName
@@ -46,7 +44,7 @@ function tokenizeGenericDirective(this: any, effects: any, ok: any, nok: any) {
   }
 
   function afterName(code: number | null): State | undefined {
-    if (!DIRECTIVE_NAMES.has(nameBuffer)) {
+    if (nameBuffer.length === 0) {
       return nok(code)
     }
 
@@ -65,7 +63,7 @@ function tokenizeGenericDirective(this: any, effects: any, ok: any, nok: any) {
       return params(code)
     }
 
-    // Not valid (e.g., @detailsfoo)
+    // Not valid (e.g., @detailsfoo with trailing non-name chars)
     return nok(code)
   }
 
@@ -83,7 +81,12 @@ function tokenizeGenericDirective(this: any, effects: any, ok: any, nok: any) {
   }
 
   function atNonLazyBreak(code: number | null): State | undefined {
-    return effects.attempt(closeStart, after, contentBefore)(code)
+    return effects.attempt(closeStart, afterFence, contentBefore)(code)
+  }
+
+  function afterFence(code: number | null): State | undefined {
+    effects.exit('directiveBlock')
+    return ok(code)
   }
 
   function contentBefore(code: number | null): State | undefined {
@@ -94,7 +97,10 @@ function tokenizeGenericDirective(this: any, effects: any, ok: any, nok: any) {
   }
 
   function beforeContentChunk(code: number | null): State | undefined {
-    if (code === null || markdownLineEnding(code)) {
+    if (code === null) {
+      return nok(code)
+    }
+    if (markdownLineEnding(code)) {
       return effects.check(nonLazyContinuation, atNonLazyBreak, after)(code)
     }
     effects.enter('directiveBlockBody')
