@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.0.0](https://github.com/birdcar/markdown-js/compare/markdown-v0.1.0...markdown-v1.0.0) (2026-06-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* @click and @steps are no longer built-in directives. They still parse correctly; consumers should register them via remarkBfm({ directives: { click: { kind: 'container' }, steps: { kind: 'container' } } }).
+
+### Features
+
+* open generic directive tokenizer to any spec-valid name ([b2fafda](https://github.com/birdcar/markdown-js/commit/b2fafda7b800aa9adda2b2a4ab70ffb8860ab1aa))
+
+
+### Documentation
+
+* document custom directive registration API ([f36d04c](https://github.com/birdcar/markdown-js/commit/f36d04c7e12797542b893dc7241c04108c1bd1aa))
+
 ## [0.1.0](https://github.com/birdcar/markdown-js/compare/markdown-v0.0.3...markdown-v0.1.0) (2026-06-11)
 
 
