@@ -1,6 +1,6 @@
 {
   "name": "@birdcar/markdown",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Birdcar Flavored Markdown (BFM) parser and renderer — unified/remark plugins",
   "type": "module",
   "exports": {
