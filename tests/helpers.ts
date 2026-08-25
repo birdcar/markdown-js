@@ -1,38 +1,29 @@
-import { unified } from 'unified'
-import remarkParse from 'remark-parse'
 import remarkStringify from 'remark-stringify'
 import remarkRehype from 'remark-rehype'
 import rehypeStringify from 'rehype-stringify'
 import type { Root } from 'mdast'
-import { remarkBfm } from '../src/plugin.js'
+import { createBfmProcessor, parseBfm } from '../src/processor.js'
 import type { RemarkBfmOptions } from '../src/blocks/registry.js'
 
 export function parse(markdown: string): Root {
-  const processor = unified().use(remarkParse).use(remarkBfm)
-  return processor.parse(markdown) as Root
+  return createBfmProcessor().parse(markdown) as Root
 }
 
 export function parseAndTransform(markdown: string): Root {
-  const processor = unified().use(remarkParse).use(remarkBfm)
-  const tree = processor.parse(markdown)
-  return processor.runSync(tree) as Root
+  return parseBfm(markdown)
 }
 
 export function parseAndTransformWith(markdown: string, options: RemarkBfmOptions): Root {
-  const processor = unified().use(remarkParse).use(remarkBfm, options)
-  const tree = processor.parse(markdown)
-  return processor.runSync(tree) as Root
+  return parseBfm(markdown, options)
 }
 
 export function stringify(markdown: string): string {
-  const processor = unified().use(remarkParse).use(remarkBfm).use(remarkStringify)
+  const processor = createBfmProcessor().use(remarkStringify)
   return String(processor.processSync(markdown))
 }
 
 export async function toHtml(markdown: string): Promise<string> {
-  const result = await unified()
-    .use(remarkParse)
-    .use(remarkBfm)
+  const result = await createBfmProcessor()
     .use(remarkRehype)
     .use(rehypeStringify)
     .process(markdown)
@@ -43,9 +34,7 @@ export async function toHtmlWith(
   markdown: string,
   options: RemarkBfmOptions,
 ): Promise<string> {
-  const result = await unified()
-    .use(remarkParse)
-    .use(remarkBfm, options)
+  const result = await createBfmProcessor(options)
     .use(remarkRehype)
     .use(rehypeStringify)
     .process(markdown)

@@ -1,4 +1,9 @@
 import type { CompileContext, Token } from 'mdast-util-from-markdown'
+import {
+  advancePoint,
+  sourcePoint,
+  type SourceLine,
+} from '../../analysis/rebase-position.js'
 
 export function footnoteFromMarkdown() {
   return {
@@ -45,16 +50,28 @@ function exitFootnoteDefLabel(this: CompileContext, token: Token) {
 
 function exitFootnoteDefContent(this: CompileContext, token: Token) {
   const node = this.stack[this.stack.length - 1] as any
-  const line = this.sliceSerialize(token)
-  if (!node._contentLines) node._contentLines = []
-  node._contentLines.push(line)
+  const start = sourcePoint(token.start)
+  if (!start) return
+  const lines = (node._contentLines ??= []) as SourceLine[]
+  const value = this.sliceSerialize(token)
+  const previous = lines[lines.length - 1]
+  if (previous?.start.line === start.line) {
+    previous.value += value
+  } else {
+    lines.push({ value, start })
+  }
 }
 
 function exitFootnoteDef(this: CompileContext, token: Token) {
   const node = this.stack[this.stack.length - 1] as any
-  const contentLines: string[] = node._contentLines || []
-  delete node._contentLines
-  // Store raw content for later transform
-  node._rawContent = contentLines.join('\n').trim()
+  const contentLines = (node._contentLines ?? []) as SourceLine[]
+  node._contentLines = contentLines.map((line) => {
+    const indentation = line.value.match(/^[ \t]*/)?.[0] ?? ''
+    return {
+      value: line.value.slice(indentation.length),
+      start: advancePoint(line.start, indentation),
+    }
+  })
+  node._rawContent = node._contentLines.map((line: SourceLine) => line.value).join('\n')
   this.exit(token)
 }

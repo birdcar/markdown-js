@@ -1,4 +1,5 @@
 import type { CompileContext, Token } from 'mdast-util-from-markdown'
+import { sourcePoint, type SourceLine } from '../../analysis/rebase-position.js'
 
 function tokenizeParams(raw: string): string[] {
   const tokens: string[] = []
@@ -77,7 +78,7 @@ function enterDirectiveBlock(this: CompileContext, token: Token) {
     name: '',
     params: {} as Record<string, string | boolean | string[]>,
     children: [],
-    _bodyLines: [] as string[],
+    _bodyLines: [] as SourceLine[],
   } as any
   this.enter(node, token)
 }
@@ -96,9 +97,15 @@ function exitDirectiveBlockParams(this: CompileContext, token: Token) {
 
 function exitDirectiveBlockBody(this: CompileContext, token: Token) {
   const node = this.stack[this.stack.length - 1] as any
-  const line = this.sliceSerialize(token)
+  const start = sourcePoint(token.start)
+  if (!start) return
   if (!node._bodyLines) node._bodyLines = []
-  node._bodyLines.push(line)
+  node._bodyLines.push({ value: this.sliceSerialize(token), start })
+}
+
+function exitDirectiveBlockCloseFence(this: CompileContext, token: Token) {
+  const node = this.stack[this.stack.length - 1] as any
+  node._closeStart = sourcePoint(token.start)
 }
 
 function exitDirectiveBlock(this: CompileContext, token: Token) {
@@ -114,6 +121,7 @@ export function genericDirectiveFromMarkdown() {
       directiveBlockName: exitDirectiveBlockName,
       directiveBlockParams: exitDirectiveBlockParams,
       directiveBlockBody: exitDirectiveBlockBody,
+      directiveBlockCloseFence: exitDirectiveBlockCloseFence,
       directiveBlock: exitDirectiveBlock,
     },
   }

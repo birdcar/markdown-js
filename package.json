@@ -32,6 +32,14 @@
       "types": "./dist/inlines/hashtags/index.d.ts",
       "import": "./dist/inlines/hashtags/index.js"
     },
+    "./footnotes": {
+      "types": "./dist/inlines/footnotes/index.d.ts",
+      "import": "./dist/inlines/footnotes/index.js"
+    },
+    "./analysis": {
+      "types": "./dist/analysis/index.d.ts",
+      "import": "./dist/analysis/index.js"
+    },
     "./metadata": {
       "types": "./dist/metadata/index.d.ts",
       "import": "./dist/metadata/index.js"
@@ -45,7 +53,10 @@
     "build": "tsup",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:dist": "BFM_TEST_DIST=1 vitest run tests/dist.test.ts",
+    "test:browser-bundle": "bun scripts/verify-browser-bundle.ts",
+    "verify:pack-contents": "bun scripts/verify-pack-contents.ts"
   },
   "dependencies": {
     "mdast-util-from-markdown": "^2.0.0",
@@ -55,12 +66,13 @@
     "micromark-util-character": "^2.0.0",
     "micromark-util-symbol": "^2.0.0",
     "micromark-util-types": "^2.0.0",
+    "remark-gfm": "^4.0.0",
+    "remark-parse": "^11.0.0",
+    "unified": "^11.0.0",
     "unist-util-visit": "^5.0.0",
     "yaml": "^2.4.0"
   },
   "peerDependencies": {
-    "remark-parse": "^11.0.0",
-    "remark-gfm": "^4.0.0",
     "remark-rehype": "^11.0.0",
     "rehype-stringify": "^10.0.0"
   },
@@ -74,12 +86,10 @@
   },
   "devDependencies": {
     "@types/mdast": "^4.0.0",
+    "esbuild": "^0.27.3",
     "typescript": "^5.4.0",
     "vitest": "^2.0.0",
     "tsup": "^8.0.0",
-    "unified": "^11.0.0",
-    "remark-parse": "^11.0.0",
-    "remark-gfm": "^4.0.0",
     "remark-rehype": "^11.0.0",
     "remark-stringify": "^11.0.0",
     "rehype-stringify": "^10.0.0"

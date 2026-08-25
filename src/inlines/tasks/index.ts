@@ -15,4 +15,13 @@ export function remarkBfmTasks(this: Processor<Root>) {
   toMarkdownExtensions.push(taskMarkerToMarkdown())
 }
 
-export type { TaskState, TaskMarkerNode } from '../../types.js'
+export {
+  TASK_STATES,
+  TASK_MARKER_CHARS,
+  TASK_STATE_MARKERS,
+} from '../../types.js'
+export type {
+  TaskState,
+  TaskMarkerChar,
+  TaskMarkerNode,
+} from '../../types.js'

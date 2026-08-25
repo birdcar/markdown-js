@@ -32,8 +32,13 @@ function exitTaskMarker(this: CompileContext, token: Token) {
   const node = this.stack[this.stack.length - 1] as any
   const state = node.state as TaskState
 
-  // Walk up to find the listItem
-  const listItem = this.stack.find((n: any) => n.type === 'listItem') as any
+  let listItem: any
+  for (let index = this.stack.length - 1; index >= 0; index--) {
+    if ((this.stack[index] as any).type === 'listItem') {
+      listItem = this.stack[index]
+      break
+    }
+  }
   if (listItem) {
     listItem.taskState = state
     if (!listItem.data) listItem.data = {}

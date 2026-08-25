@@ -30,12 +30,16 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ~/.bun/install/cache
-          key: bun-${{ hashFiles('bun.lockb') }}
+          key: bun-${{ hashFiles('bun.lock') }}
           restore-keys: bun-
       - run: bun install --frozen-lockfile
       - run: bun run typecheck
       - run: bun test
       - run: bun run build
+      - run: bun run test:dist
+      - run: bun run test:browser-bundle
+      - run: npm pack --dry-run --json > /tmp/markdown-pack.json
+      - run: bun run verify:pack-contents -- /tmp/markdown-pack.json
       - uses: actions/upload-artifact@v4
         with:
           name: dist

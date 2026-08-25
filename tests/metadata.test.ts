@@ -1,13 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { unified } from 'unified'
-import remarkParse from 'remark-parse'
-import { remarkBfm } from '../src/plugin.js'
 import { extractMetadata } from '../src/metadata/extract.js'
+import { parseBfm } from '../src/processor.js'
 import type { Root } from 'mdast'
 
 function parse(input: string): Root {
-  const processor = unified().use(remarkParse).use(remarkBfm)
-  return processor.parse(input) as Root
+  return parseBfm(input)
 }
 
 describe('metadata extraction', () => {
@@ -66,13 +63,38 @@ describe('metadata extraction', () => {
       expect(meta.computed.tasks.priority).toHaveLength(1)
     })
 
-    it('captures task modifiers', () => {
-      const tree = parse('- [>] Meeting //due:2025-03-01 //hard\n')
+    it('captures task modifiers and stable ranges', () => {
+      const source = '- [>] Meeting //due:2025-03-01 //hard\n'
+      const tree = parse(source)
       const meta = extractMetadata(tree)
       const task = meta.computed.tasks.scheduled[0]
       expect(task.modifiers).toHaveLength(2)
-      expect(task.modifiers[0]).toEqual({ key: 'due', value: '2025-03-01' })
-      expect(task.modifiers[1]).toEqual({ key: 'hard', value: null })
+      expect(task.modifiers[0]).toMatchObject({ key: 'due', value: '2025-03-01' })
+      expect(task.modifiers[1]).toMatchObject({ key: 'hard', value: null })
+      expect(source.slice(
+        task.modifiers[0].range.start.offset,
+        task.modifiers[0].range.end.offset,
+      )).toBe('//due:2025-03-01')
+      expect(source.slice(
+        task.markerRange.start.offset,
+        task.markerRange.end.offset,
+      )).toBe('>')
+    })
+
+    it('recursively extracts formatted and multiline task text without nested tasks', () => {
+      const source = [
+        '- [ ] **Ship** [docs](https://example.com) with `code`, @sam and #release',
+        '  on the next line',
+        '  - [x] Nested task',
+        '',
+      ].join('\n')
+      const tasks = extractMetadata(parse(source)).computed.tasks.all
+
+      expect(tasks).toHaveLength(2)
+      expect(tasks[0].text).toBe(
+        'Ship docs with code, @sam and #release on the next line',
+      )
+      expect(tasks[1].text).toBe('Nested task')
     })
 
     it('returns empty collections when no tasks', () => {
@@ -152,7 +174,7 @@ describe('metadata extraction', () => {
 
   describe('footnotes', () => {
     it('extracts footnote references in order of first appearance', () => {
-      const tree = parse('Some text[^note1] and more[^note2].\n')
+      const tree = parse('Some text[^note1] and more[^note2].\n\n[^note1]: One.\n[^note2]: Two.\n')
       const meta = extractMetadata(tree)
       expect(meta.computed.footnotes).toHaveLength(2)
       expect(meta.computed.footnotes[0].label).toBe('note1')
@@ -162,7 +184,7 @@ describe('metadata extraction', () => {
     })
 
     it('deduplicates repeated references to the same label', () => {
-      const tree = parse('First[^a] and again[^a] and other[^b].\n')
+      const tree = parse('First[^a] and again[^a] and other[^b].\n\n[^a]: A.\n[^b]: B.\n')
       const meta = extractMetadata(tree)
       expect(meta.computed.footnotes).toHaveLength(2)
       expect(meta.computed.footnotes[0].label).toBe('a')
@@ -176,7 +198,7 @@ describe('metadata extraction', () => {
     })
 
     it('captures line number of first appearance', () => {
-      const tree = parse('Text[^ref] here.\n')
+      const tree = parse('Text[^ref] here.\n\n[^ref]: Definition.\n')
       const meta = extractMetadata(tree)
       expect(meta.computed.footnotes[0].line).toBeGreaterThan(0)
     })

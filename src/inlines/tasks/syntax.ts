@@ -1,5 +1,8 @@
 import type { Extension, Tokenizer } from 'micromark-util-types'
-import { TASK_MARKER_CHARS } from '../../types.js'
+import {
+  TASK_MARKER_CHARS,
+  type TaskMarkerChar,
+} from '../../types.js'
 
 const tokenizeTaskMarker: Tokenizer = function (effects, ok, nok) {
   const self = this
@@ -23,7 +26,7 @@ const tokenizeTaskMarker: Tokenizer = function (effects, ok, nok) {
   function inside(code: number | null) {
     if (code === null) return nok(code)
     const char = String.fromCharCode(code)
-    if (!TASK_MARKER_CHARS.has(char)) return nok(code)
+    if (!TASK_MARKER_CHARS.has(char as TaskMarkerChar)) return nok(code)
     effects.enter('taskMarkerValue')
     effects.consume(code)
     effects.exit('taskMarkerValue')

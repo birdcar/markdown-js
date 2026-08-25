@@ -23,17 +23,11 @@ npm install remark-rehype rehype-stringify
 ### Parse and render all BFM features
 
 ```ts
-import { unified } from 'unified'
-import remarkParse from 'remark-parse'
-import remarkGfm from 'remark-gfm'
 import remarkRehype from 'remark-rehype'
 import rehypeStringify from 'rehype-stringify'
-import { remarkBfm } from '@birdcar/markdown'
+import { createBfmProcessor } from '@birdcar/markdown'
 
-const file = await unified()
-  .use(remarkParse)
-  .use(remarkGfm)
-  .use(remarkBfm)
+const file = await createBfmProcessor()
   .use(remarkRehype)
   .use(rehypeStringify)
   .process(`
@@ -55,6 +49,39 @@ Hey @sarah, can you review this? #urgent
   `)
 
 console.log(String(file))
+```
+
+### Parse or analyze BFM source
+
+`createBfmProcessor()` is the supported all-feature composition. It includes GFM and gives BFM task markers and footnotes precedence, so `[ ]`, `[x]`, and all extended task states produce the same BFM node model.
+
+```ts
+import {
+  analyzeBfm,
+  createBfmProcessor,
+  parseBfm,
+} from '@birdcar/markdown'
+
+const processor = createBfmProcessor()
+const parsed = processor.parse('- [>] Ship //due:2025-09-01')
+const transformed = processor.runSync(parsed)
+
+const tree = parseBfm('- [>] Ship //due:2025-09-01')
+const analysis = analyzeBfm('- [>] Ship //due:2025-09-01')
+```
+
+`parseBfm(source)` is strict: it always runs parser transforms and throws for source errors such as an undefined footnote. `analyzeBfm(source)` is resilient for editors and indexers. Source errors return `tree: null`, empty safe metadata and symbols, and a diagnostic; programming or directive-configuration errors still throw.
+
+Analysis contains concrete symbols for tasks, mentions, hashtags, footnote references and definitions, and directives. Every source range uses JavaScript UTF-16 offsets, matching CodeMirror and `source.slice(start.offset, end.offset)`. Task symbols include the list-item range, the single marker-character range, the raw text range, and each modifier range.
+
+```ts
+const source = '😀 - not a task\n- [!] Ship **today** //hard\n'
+const { symbols, diagnostics } = analyzeBfm(source)
+const task = symbols.tasks[0]
+
+source.slice(task.markerRange.start.offset, task.markerRange.end.offset) // '!'
+source.slice(task.modifiers[0].range.start.offset, task.modifiers[0].range.end.offset) // '//hard'
+diagnostics // []
 ```
 
 ### Use individual plugins
@@ -87,32 +114,18 @@ Available sub-plugins and utilities:
 | `@birdcar/markdown/hashtags` | `remarkBfmHashtags` | `#project` inline tags |
 | `@birdcar/markdown/directives` | `remarkBfmDirectives` | Directive block parser with built-in and custom directives |
 | `@birdcar/markdown/footnotes` | `remarkBfmFootnotes` | `[^label]` references and definitions |
+| `@birdcar/markdown/analysis` | `analyzeBfm` | Resilient metadata, symbols, ranges, and diagnostics |
 | `@birdcar/markdown/metadata` | `extractMetadata` | Computed fields from parsed documents |
 | `@birdcar/markdown/merge` | `mergeDocuments` | Deep merge of front-matter + body |
 
 ### Work with the AST directly
 
 ```ts
-import { unified } from 'unified'
-import remarkParse from 'remark-parse'
-import remarkGfm from 'remark-gfm'
-import { remarkBfm } from '@birdcar/markdown'
+import { parseBfm } from '@birdcar/markdown'
 import type { TaskMarkerNode, TaskModifierNode, MentionNode } from '@birdcar/markdown'
 import { visit } from 'unist-util-visit'
 
-const tree = unified()
-  .use(remarkParse)
-  .use(remarkGfm)
-  .use(remarkBfm)
-  .parse('- [>] Call dentist //due:2025-03-01')
-
-// Transform runs after parse
-const processor = unified()
-  .use(remarkParse)
-  .use(remarkGfm)
-  .use(remarkBfm)
-
-const mdast = processor.runSync(processor.parse('- [>] Call dentist //due:2025-03-01'))
+const mdast = parseBfm('- [>] Call dentist //due:2025-03-01')
 
 visit(mdast, 'taskModifier', (node: TaskModifierNode) => {
   console.log(node.key, node.value) // "due", "2025-03-01"
@@ -124,17 +137,10 @@ visit(mdast, 'taskModifier', (node: TaskModifierNode) => {
 The plugins include `toMarkdown` extensions, so round-tripping works:
 
 ```ts
-import { unified } from 'unified'
-import remarkParse from 'remark-parse'
 import remarkStringify from 'remark-stringify'
-import remarkGfm from 'remark-gfm'
-import { remarkBfm } from '@birdcar/markdown'
+import { createBfmProcessor } from '@birdcar/markdown'
 
-const processor = unified()
-  .use(remarkParse)
-  .use(remarkGfm)
-  .use(remarkBfm)
-  .use(remarkStringify)
+const processor = createBfmProcessor().use(remarkStringify)
 
 const result = processor.processSync('- [>] Call dentist //due:2025-03-01')
 console.log(String(result))
@@ -144,12 +150,9 @@ console.log(String(result))
 ### Extract metadata
 
 ```ts
-import { unified } from 'unified'
-import remarkParse from 'remark-parse'
-import { remarkBfm, extractMetadata } from '@birdcar/markdown'
+import { extractMetadata, parseBfm } from '@birdcar/markdown'
 
-const processor = unified().use(remarkParse).use(remarkBfm)
-const tree = processor.parse(`
+const tree = parseBfm(`
 ---
 title: My Post
 tags:
@@ -185,6 +188,20 @@ const meta = extractMetadata(tree, {
 })
 meta.custom.isLongRead // false
 ```
+
+### Use in a browser
+
+The parser and analysis entry points have no Node built-in, filesystem, or Obsidian dependency and can be bundled directly for browsers:
+
+```ts
+import { analyzeBfm, parseBfm } from '@birdcar/markdown'
+import { analyzeBfm as analyzeFromSubpath } from '@birdcar/markdown/analysis'
+
+const tree = parseBfm('- [ ] Browser task')
+const analysis = analyzeFromSubpath('#browser')
+```
+
+The release checks bundle a consumer with esbuild using `platform: 'browser'` and import every public feature subpath.
 
 ### Merge documents
 
@@ -487,6 +504,7 @@ All AST node types, metadata types, and contracts are exported:
 import type {
   // AST nodes
   TaskState,          // 'open' | 'done' | 'scheduled' | 'migrated' | 'irrelevant' | 'event' | 'priority'
+  TaskMarkerChar,     // ' ' | 'x' | '>' | '<' | '-' | 'o' | '!'
   TaskMarkerNode,     // { type: 'taskMarker', state: TaskState }
   TaskModifierNode,   // { type: 'taskModifier', key: string, value: string | null }
   MentionNode,        // { type: 'mention', identifier: string }
@@ -500,7 +518,12 @@ import type {
   DocumentMetadata,   // { frontmatter, computed: BuiltinMetadata, custom }
   BuiltinMetadata,    // { wordCount, readingTime, tasks, tags, links }
   TaskCollection,     // { all, open, done, scheduled, ... }
-  ExtractedTask,      // { text, state, modifiers, line }
+  ExtractedTask,      // { text, state, modifiers, line, range, markerRange, textRange }
+  SourcePoint,        // { line, column, offset } with a required UTF-16 offset
+  SourceRange,        // { start: SourcePoint, end: SourcePoint }
+  BfmAnalysis,        // { tree, metadata, symbols, diagnostics }
+  BfmDiagnostic,      // { code, message, severity, range? }
+  AnalyzedTask,       // source-safe task semantics and ranges
   LinkReference,      // { url, title, line }
 
   // Merge

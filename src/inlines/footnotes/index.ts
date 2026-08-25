@@ -4,6 +4,12 @@ import { fromMarkdown } from 'mdast-util-from-markdown'
 import { footnoteRefSyntax, footnoteDefSyntax } from './syntax.js'
 import { footnoteFromMarkdown } from './from-markdown.js'
 import { footnoteToMarkdown } from './to-markdown.js'
+import {
+  rebaseTreePositions,
+  sourceRange,
+  type SourceLine,
+} from '../../analysis/rebase-position.js'
+import { BfmSourceError } from '../../analysis/types.js'
 
 export function remarkBfmFootnotes(this: Processor<Root>) {
   const data = this.data()
@@ -69,7 +75,11 @@ function transformFootnotes(tree: Root, processor: Processor<Root>): void {
   // Check for undefined labels
   for (const ref of refs) {
     if (!defs.has(ref.label)) {
-      throw new Error(`Footnote reference [^${ref.label}] has no corresponding definition`)
+      throw new BfmSourceError(
+        'undefined-footnote',
+        `Footnote reference [^${ref.label}] has no corresponding definition`,
+        sourceRange(ref.node.position),
+      )
     }
   }
 
@@ -79,13 +89,16 @@ function transformFootnotes(tree: Root, processor: Processor<Root>): void {
     const index = labelToIndex.get(label)
     if (index != null) def.index = index
 
+    const contentLines = (def._contentLines ?? []) as SourceLine[]
     if (def._rawContent && (!def.children || def.children.length === 0)) {
       const bodyTree = fromMarkdown(def._rawContent, {
         extensions: (data.micromarkExtensions || []) as any[],
         mdastExtensions: (data.fromMarkdownExtensions || []) as any[],
       })
+      rebaseTreePositions(bodyTree, contentLines)
       def.children = bodyTree.children
     }
+    delete def._contentLines
     delete def._rawContent
   }
 
@@ -105,7 +118,11 @@ function transformFootnotes(tree: Root, processor: Processor<Root>): void {
     }
   }
   if (endnotesCount > 1) {
-    throw new Error('Multiple @endnotes directives found; only one is allowed per document')
+    throw new BfmSourceError(
+      'multiple-endnotes',
+      'Multiple @endnotes directives found; only one is allowed per document',
+      sourceRange(endnotesNode?.position),
+    )
   }
 
   if (!endnotesNode) {

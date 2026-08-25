@@ -16,7 +16,19 @@ export const TASK_STATES = {
 export type TaskMarkerChar = keyof typeof TASK_STATES
 export type TaskState = (typeof TASK_STATES)[TaskMarkerChar]
 
-export const TASK_MARKER_CHARS = new Set(Object.keys(TASK_STATES))
+export const TASK_MARKER_CHARS = new Set<TaskMarkerChar>(
+  Object.keys(TASK_STATES) as TaskMarkerChar[],
+)
+
+export const TASK_STATE_MARKERS = {
+  open: ' ',
+  done: 'x',
+  scheduled: '>',
+  migrated: '<',
+  irrelevant: '-',
+  event: 'o',
+  priority: '!',
+} as const satisfies Record<TaskState, TaskMarkerChar>
 
 export type TaskMarkerNode = Literal & {
   type: 'taskMarker'

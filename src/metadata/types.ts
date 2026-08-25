@@ -1,3 +1,4 @@
+import type { SourceRange } from '../analysis/types.js'
 import type { TaskState } from '../types.js'
 
 export interface DocumentMetadata {
@@ -26,11 +27,20 @@ export interface TaskCollection {
   priority: ExtractedTask[]
 }
 
+export interface ExtractedTaskModifier {
+  key: string
+  value: string | null
+  range: SourceRange
+}
+
 export interface ExtractedTask {
   text: string
   state: TaskState
-  modifiers: Array<{ key: string; value: string | null }>
+  modifiers: ExtractedTaskModifier[]
   line: number
+  range: SourceRange
+  markerRange: SourceRange
+  textRange: SourceRange
 }
 
 export interface LinkReference {
