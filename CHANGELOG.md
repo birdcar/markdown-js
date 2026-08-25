@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/birdcar/markdown-js/compare/markdown-v1.1.0...markdown-v1.1.1) (2026-08-25)
+
+
+### Bug Fixes
+
+* use public registry URLs in lockfile ([#6](https://github.com/birdcar/markdown-js/issues/6)) ([ef1d346](https://github.com/birdcar/markdown-js/commit/ef1d346d4c09bb02cd9cd3cf3e451681f2d773e6))
+
 ## [1.1.0](https://github.com/birdcar/markdown-js/compare/markdown-v1.0.0...markdown-v1.1.0) (2026-08-25)
 
 
