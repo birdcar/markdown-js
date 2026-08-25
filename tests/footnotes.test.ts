@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { analyzeBfm } from '../src/analysis/index.js'
 import { parseAndTransform, findNodes, toHtml } from './helpers.js'
 
 describe('footnote references', () => {
@@ -104,6 +105,27 @@ describe('footnote definitions', () => {
     expect(para.type).toBe('paragraph')
     const strong = para.children.find((c: any) => c.type === 'strong')
     expect(strong).toBeDefined()
+  })
+
+  it('keeps definition child positions document-relative', () => {
+    const source = 'Before.\n\nText[^a].\n\n[^a]: This is **bold** text.\n'
+    const tree = parseAndTransform(source)
+    const strong = findNodes((tree as any).footnotes[0], 'strong')[0]
+
+    expect(source.slice(strong.position.start.offset, strong.position.end.offset)).toBe(
+      '**bold**',
+    )
+    expect(strong.position.start.line).toBe(5)
+  })
+
+  it('returns strict footnote failures as analysis diagnostics', () => {
+    const analysis = analyzeBfm('Text[^missing].\n')
+
+    expect(analysis.tree).toBeNull()
+    expect(analysis.diagnostics[0]).toMatchObject({
+      code: 'undefined-footnote',
+      severity: 'error',
+    })
   })
 })
 

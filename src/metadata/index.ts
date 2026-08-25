@@ -5,6 +5,7 @@ export type {
   BuiltinMetadata,
   TaskCollection,
   ExtractedTask,
+  ExtractedTaskModifier,
   LinkReference,
   FootnoteReference,
 } from './types.js'

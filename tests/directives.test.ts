@@ -49,6 +49,26 @@ describe('callout directive', () => {
     const out2 = stringify(out)
     expect(out2).toBe(out)
   })
+
+  it('keeps nested container child positions document-relative', () => {
+    const source = [
+      'Before.',
+      '',
+      '@callout',
+      '@details summary="More"',
+      'Nested **content**.',
+      '@enddetails',
+      '@endcallout',
+      '',
+    ].join('\n')
+    const tree = parseAndTransform(source)
+    const strong = findNodes(tree, 'strong')[0]
+
+    expect(source.slice(strong.position.start.offset, strong.position.end.offset)).toBe(
+      '**content**',
+    )
+    expect(strong.position.start.line).toBe(5)
+  })
 })
 
 describe('embed directive', () => {

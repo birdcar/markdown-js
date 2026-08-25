@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { analyzeBfm } from '../src/analysis/index.js'
+import { BUILTIN_TASK_MODIFIERS } from '../src/inlines/modifiers/index.js'
 import { parseAndTransform, findNodes, stringify } from './helpers.js'
 
 const fixturesDir = join(import.meta.dirname, '..', 'spec', 'fixtures')
@@ -87,5 +89,49 @@ describe('task modifiers', () => {
 
     const mods = findNodes(tree, 'taskModifier')
     expect(mods).toHaveLength(0)
+  })
+
+  it('keeps modifier-like prose literal outside task items', () => {
+    const source = 'Prose //due:2025-03-01 and //unknown:value\n'
+    const tree = parseAndTransform(source)
+
+    expect(findNodes(tree, 'taskModifier')).toHaveLength(0)
+    expect(findNodes(tree, 'text').map((node) => node.value).join('')).toBe(
+      'Prose //due:2025-03-01 and //unknown:value',
+    )
+    expect(stringify(source)).toContain(source.trim())
+  })
+
+  it('requires whitespace before a modifier and preserves unknown task keys', () => {
+    const source = '- [ ] word//due:2025-01-01 //unknown:value\n'
+    const tree = parseAndTransform(source)
+    const modifiers = findNodes(tree, 'taskModifier')
+
+    expect(modifiers).toHaveLength(1)
+    expect(modifiers[0]).toMatchObject({ key: 'unknown', value: 'value' })
+  })
+
+  it('reports exact CRLF modifier ranges', () => {
+    const source = '- [ ] First\r\n- [!] Second //hard //cron:0 9 * * 1\r\n'
+    const modifier = analyzeBfm(source).symbols.tasks[1].modifiers[1]
+
+    expect(source.slice(modifier.range.start.offset, modifier.range.end.offset)).toBe(
+      '//cron:0 9 * * 1',
+    )
+    expect(modifier.range.start.line).toBe(2)
+  })
+
+  it('exports every built-in modifier definition', () => {
+    expect(Object.keys(BUILTIN_TASK_MODIFIERS)).toEqual([
+      'due',
+      'around',
+      'after',
+      'every',
+      'cron',
+      'hard',
+      'wait',
+    ])
+    expect(BUILTIN_TASK_MODIFIERS.hard.value).toBe('flag')
+    expect(BUILTIN_TASK_MODIFIERS.due.value).toBe('required')
   })
 })

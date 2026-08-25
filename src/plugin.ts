@@ -13,7 +13,7 @@ export function remarkBfm(this: Processor<Root>, options?: RemarkBfmOptions) {
   remarkBfmFrontmatter.call(this)
   const directivesTransform = remarkBfmDirectives.call(this, options)
   remarkBfmTasks.call(this)
-  remarkBfmModifiers.call(this)
+  const modifiersTransform = remarkBfmModifiers.call(this)
   remarkBfmMentions.call(this)
   remarkBfmHashtags.call(this)
   const footnotesTransform = remarkBfmFootnotes.call(this)
@@ -21,5 +21,6 @@ export function remarkBfm(this: Processor<Root>, options?: RemarkBfmOptions) {
   return function transform(tree: Root) {
     if (directivesTransform) directivesTransform(tree)
     if (footnotesTransform) footnotesTransform(tree)
+    if (modifiersTransform) modifiersTransform(tree)
   }
 }

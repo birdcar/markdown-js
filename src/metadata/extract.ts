@@ -1,6 +1,9 @@
 import type { Root, Text, Link, Image, ListItem } from 'mdast'
+import type { Node, Parent } from 'unist'
 import { visit } from 'unist-util-visit'
 import type { ComputedFieldResolver } from '../contracts/computed-field-resolver.js'
+import { sourceRange } from '../analysis/rebase-position.js'
+import type { SourcePoint, SourceRange } from '../analysis/types.js'
 import type { TaskState } from '../types.js'
 import type {
   DocumentMetadata,
@@ -89,35 +92,36 @@ function extractTasks(tree: Root): TaskCollection {
   }
 
   visit(tree, 'listItem', (node: ListItem) => {
-    const taskState = (node as any).taskState as TaskState | undefined
+    const taskState = node.taskState as TaskState | undefined
     if (!taskState) return
 
-    // Extract text and modifiers from the paragraph children
-    const paragraph = node.children[0]
-    if (!paragraph || paragraph.type !== 'paragraph') return
-
-    let text = ''
-    const modifiers: Array<{ key: string; value: string | null }> = []
-
-    for (const child of paragraph.children) {
-      if ((child as any).type === 'taskMarker') continue
-      if ((child as any).type === 'taskModifier') {
-        modifiers.push({
-          key: (child as any).key,
-          value: (child as any).value,
-        })
-        continue
+    const paragraphs = node.children.filter((child) => child.type === 'paragraph')
+    const marker = findFirst(paragraphs, 'taskMarker')
+    const markerNodeRange = sourceRange(marker?.position) ?? emptyRange()
+    const modifiers = findAll(paragraphs, 'taskModifier').map((modifier) => {
+      const candidate = modifier as Node & { key: string; value: string | null }
+      return {
+        key: candidate.key,
+        value: candidate.value,
+        range: sourceRange(candidate.position) ?? emptyRange(),
       }
-      if ((child as any).type === 'text') {
-        text += (child as any).value
-      }
-    }
+    })
+    const contentNodes = paragraphs.flatMap((paragraph) => (
+      paragraph.children.filter((child) => (
+        child.type !== 'taskMarker' && child.type !== 'taskModifier'
+      ))
+    ))
+    const textRange = rangeForNodes(contentNodes)
+      ?? collapsedRange(markerNodeRange.end)
 
     const task: ExtractedTask = {
-      text: text.trim(),
+      text: paragraphs.map(extractTaskText).join(' ').replace(/\s+/g, ' ').trim(),
       state: taskState,
       modifiers,
       line: node.position?.start.line ?? 0,
+      range: sourceRange(node.position) ?? emptyRange(),
+      markerRange: markerCharacterRange(markerNodeRange),
+      textRange,
     }
 
     collection.all.push(task)
@@ -125,6 +129,84 @@ function extractTasks(tree: Root): TaskCollection {
   })
 
   return collection
+}
+
+function extractTaskText(node: Node): string {
+  const candidate = node as Node & {
+    value?: string
+    alt?: string
+    identifier?: string
+    platform?: string
+  }
+  if (node.type === 'taskMarker' || node.type === 'taskModifier') return ''
+  if (node.type === 'mention') {
+    return `@${candidate.platform ? `${candidate.platform}:` : ''}${candidate.identifier ?? ''}`
+  }
+  if (node.type === 'hashtag') return `#${candidate.identifier ?? ''}`
+  if (node.type === 'image') return candidate.alt ?? ''
+  if (node.type === 'break') return '\n'
+  if (typeof candidate.value === 'string') return candidate.value
+  if (isParent(node)) return node.children.map(extractTaskText).join('')
+  return ''
+}
+
+function findFirst(nodes: Node[], type: string): Node | undefined {
+  for (const node of nodes) {
+    if (node.type === type) return node
+    if (isParent(node)) {
+      const found = findFirst(node.children, type)
+      if (found) return found
+    }
+  }
+  return undefined
+}
+
+function findAll(nodes: Node[], type: string): Node[] {
+  const matches: Node[] = []
+  for (const node of nodes) {
+    if (node.type === type) matches.push(node)
+    if (isParent(node)) matches.push(...findAll(node.children, type))
+  }
+  return matches
+}
+
+function rangeForNodes(nodes: Node[]): SourceRange | undefined {
+  const ranges = nodes
+    .map((node) => sourceRange(node.position))
+    .filter((range): range is SourceRange => Boolean(range))
+  if (ranges.length === 0) return undefined
+  return {
+    start: ranges[0].start,
+    end: ranges[ranges.length - 1].end,
+  }
+}
+
+function markerCharacterRange(range: SourceRange): SourceRange {
+  return {
+    start: advanceColumn(range.start, 1),
+    end: advanceColumn(range.start, 2),
+  }
+}
+
+function advanceColumn(point: SourcePoint, amount: number): SourcePoint {
+  return {
+    line: point.line,
+    column: point.column + amount,
+    offset: point.offset + amount,
+  }
+}
+
+function collapsedRange(point: SourcePoint): SourceRange {
+  return { start: point, end: point }
+}
+
+function emptyRange(): SourceRange {
+  const point = { line: 0, column: 0, offset: 0 }
+  return { start: point, end: point }
+}
+
+function isParent(node: Node): node is Parent {
+  return 'children' in node && Array.isArray(node.children)
 }
 
 function extractTags(

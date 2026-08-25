@@ -9,6 +9,8 @@ export default defineConfig({
     'src/blocks/index.ts',
     'src/blocks/frontmatter/index.ts',
     'src/inlines/hashtags/index.ts',
+    'src/inlines/footnotes/index.ts',
+    'src/analysis/index.ts',
     'src/metadata/index.ts',
     'src/merge/index.ts',
   ],
