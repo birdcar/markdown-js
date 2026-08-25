@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/birdcar/markdown-js/compare/markdown-v1.0.0...markdown-v1.1.0) (2026-08-25)
+
+
+### Features
+
+* add BFM semantic analysis boundary ([#4](https://github.com/birdcar/markdown-js/issues/4)) ([f0a6a84](https://github.com/birdcar/markdown-js/commit/f0a6a84b301d68886d938e05b0b77786ceb926a6))
+
 ## [1.0.0](https://github.com/birdcar/markdown-js/compare/markdown-v0.1.0...markdown-v1.0.0) (2026-06-11)
 
 
